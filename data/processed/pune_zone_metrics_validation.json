@@ -1,0 +1,455 @@
+{
+  "status": "validated",
+  "dataset_version": "pune-terrain-population-v1",
+  "zone_count": 9,
+  "generated_at_utc": "2026-10-31T07:07:38.030527+00:00",
+  "sources": {
+    "dem": {
+      "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+      "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+      "crs": "EPSG:4326",
+      "units": "metres",
+      "nodata": null,
+      "resolution": [
+        0.0002777777777777778,
+        0.0002777777777777778
+      ],
+      "bounds": [
+        73.76986110000001,
+        18.450138899999992,
+        73.95986110000001,
+        18.60013889999999
+      ],
+      "tags": {
+        "AREA_OR_POINT": "Point"
+      },
+      "band_tags": {},
+      "valid_mask": [
+        "1"
+      ],
+      "unit_basis": "declared_metadata",
+      "nodata_validation": "all_pixels_finite_no_nodata_marker",
+      "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+      "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+      "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+      "dataset_year": null,
+      "spatial_resolution": null,
+      "retrieved_at_utc": "2026-10-30T15:47:02Z"
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "zones": [
+    {
+      "zone_id": "c74abcf0-6b74-5fe2-ab83-4aafd31161c1",
+      "zone_slug": "pune-grid-r1-c1",
+      "dem_mean_m": 590.08,
+      "dem_min_m": 541.0,
+      "dem_max_m": 750.97,
+      "slope_mean_degrees": 4.562,
+      "population_estimate": null,
+      "dem_coverage_pixels": 40812,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    },
+    {
+      "zone_id": "ab285537-6c72-5cfb-b71a-2a0918691c2a",
+      "zone_slug": "pune-grid-r1-c2",
+      "dem_mean_m": 628.5,
+      "dem_min_m": 540.0,
+      "dem_max_m": 693.13,
+      "slope_mean_degrees": 4.411,
+      "population_estimate": null,
+      "dem_coverage_pixels": 40812,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    },
+    {
+      "zone_id": "0231fe4a-197b-502c-8225-e174d92b0325",
+      "zone_slug": "pune-grid-r1-c3",
+      "dem_mean_m": 606.53,
+      "dem_min_m": 561.19,
+      "dem_max_m": 666.64,
+      "slope_mean_degrees": 3.383,
+      "population_estimate": null,
+      "dem_coverage_pixels": 40633,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    },
+    {
+      "zone_id": "dc2699fb-d6b5-5722-91e5-3ee96af48f66",
+      "zone_slug": "pune-grid-r2-c1",
+      "dem_mean_m": 613.21,
+      "dem_min_m": 554.1,
+      "dem_max_m": 744.87,
+      "slope_mean_degrees": 6.02,
+      "population_estimate": null,
+      "dem_coverage_pixels": 41040,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    },
+    {
+      "zone_id": "e631d13e-ba9d-576d-b97d-d8d31828e1e7",
+      "zone_slug": "pune-grid-r2-c2",
+      "dem_mean_m": 563.35,
+      "dem_min_m": 532.0,
+      "dem_max_m": 631.7,
+      "slope_mean_degrees": 3.525,
+      "population_estimate": null,
+      "dem_coverage_pixels": 41040,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    },
+    {
+      "zone_id": "f87edca6-1f2d-555d-b35e-5f7a0967258d",
+      "zone_slug": "pune-grid-r2-c3",
+      "dem_mean_m": 560.5,
+      "dem_min_m": 526.77,
+      "dem_max_m": 656.29,
+      "slope_mean_degrees": 2.88,
+      "population_estimate": null,
+      "dem_coverage_pixels": 40860,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    },
+    {
+      "zone_id": "3b74def4-b2ed-5ae6-af34-9577e29083ef",
+      "zone_slug": "pune-grid-r3-c1",
+      "dem_mean_m": 565.49,
+      "dem_min_m": 543.5,
+      "dem_max_m": 686.33,
+      "slope_mean_degrees": 3.253,
+      "population_estimate": null,
+      "dem_coverage_pixels": 41040,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    },
+    {
+      "zone_id": "e20aec1f-ba7d-5193-b7c7-6f17eb88323a",
+      "zone_slug": "pune-grid-r3-c2",
+      "dem_mean_m": 563.03,
+      "dem_min_m": 536.5,
+      "dem_max_m": 594.12,
+      "slope_mean_degrees": 2.956,
+      "population_estimate": null,
+      "dem_coverage_pixels": 41040,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    },
+    {
+      "zone_id": "a750c628-b06a-5e19-8403-e27f0f741b4f",
+      "zone_slug": "pune-grid-r3-c3",
+      "dem_mean_m": 577.3,
+      "dem_min_m": 540.64,
+      "dem_max_m": 606.87,
+      "slope_mean_degrees": 2.438,
+      "population_estimate": null,
+      "dem_coverage_pixels": 40860,
+      "population_coverage_pixels": 0,
+      "provenance": {
+        "dem": {
+          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
+          "crs": "EPSG:4326",
+          "units": "metres",
+          "nodata": null,
+          "resolution": [
+            0.0002777777777777778,
+            0.0002777777777777778
+          ],
+          "bounds": [
+            73.76986110000001,
+            18.450138899999992,
+            73.95986110000001,
+            18.60013889999999
+          ],
+          "tags": {
+            "AREA_OR_POINT": "Point"
+          },
+          "band_tags": {},
+          "valid_mask": [
+            "1"
+          ],
+          "unit_basis": "declared_metadata",
+          "nodata_validation": "all_pixels_finite_no_nodata_marker",
+          "inspected_at_utc": "2026-10-31T07:07:38.051076+00:00",
+          "source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+          "licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+          "dataset_year": null,
+          "spatial_resolution": null,
+          "retrieved_at_utc": "2026-10-30T15:47:02Z"
+        }
+      }
+    }
+  ],
+  "dem_zones_covered": 9,
+  "slope_zones_covered": 9,
+  "population_zones_covered": 0,
+  "database_status": "committed",
+  "database_rows_upserted": 0,
+  "database_rows_verified": 9
+}

@@ -1,0 +1,1 @@
+{"algorithm": "XGBoost", "feature_names": ["rainfall_24h_mm", "peak_hour_mm", "prior_72h_mm", "slope_mean_degrees", "drainage_index", "historical_flood_exposure"], "evaluation": {}}

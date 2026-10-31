@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"external_id": "DEMO-1", "waterway_class": "storm_drain"}, "geometry": {"type": "LineString", "coordinates": [[73.84, 18.52], [73.85, 18.53]]}}]}

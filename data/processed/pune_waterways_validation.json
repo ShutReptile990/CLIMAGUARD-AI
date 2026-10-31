@@ -1,0 +1,93 @@
+{
+  "source": {
+    "source_kind": "OpenStreetMap",
+    "source_dataset": "osm:pune-waterways",
+    "source_sha256": "4245919b80742e041eceec2c17bd288c2c735961fdb172d3a90e21362c937c6a",
+    "source_timestamp": "2026-10-29T15:36:36Z",
+    "source_copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+    "metadata": {},
+    "validated_at_utc": "2026-10-30T15:13:50.787068+00:00",
+    "crs": "EPSG:4326"
+  },
+  "feature_count": 213,
+  "valid_records": 213,
+  "counts": {
+    "canal": 31,
+    "river": 16,
+    "stream": 129,
+    "drain": 30,
+    "ditch": 7
+  },
+  "culvert_count": 46,
+  "duplicate_ids": [],
+  "failed_records": [],
+  "zones": [
+    {
+      "zone_id": "c74abcf0-6b74-5fe2-ab83-4aafd31161c1",
+      "zone_slug": "pune-grid-r1-c1",
+      "mapped_waterway_distance_m": 540.44,
+      "mapped_drain_distance_m": 6632.71,
+      "mapped_culvert_count": 3
+    },
+    {
+      "zone_id": "ab285537-6c72-5cfb-b71a-2a0918691c2a",
+      "zone_slug": "pune-grid-r1-c2",
+      "mapped_waterway_distance_m": 711.54,
+      "mapped_drain_distance_m": 2567.31,
+      "mapped_culvert_count": 7
+    },
+    {
+      "zone_id": "0231fe4a-197b-502c-8225-e174d92b0325",
+      "zone_slug": "pune-grid-r1-c3",
+      "mapped_waterway_distance_m": 2438.8,
+      "mapped_drain_distance_m": 3326.96,
+      "mapped_culvert_count": 1
+    },
+    {
+      "zone_id": "dc2699fb-d6b5-5722-91e5-3ee96af48f66",
+      "zone_slug": "pune-grid-r2-c1",
+      "mapped_waterway_distance_m": 1540.81,
+      "mapped_drain_distance_m": 2385.09,
+      "mapped_culvert_count": 0
+    },
+    {
+      "zone_id": "e631d13e-ba9d-576d-b97d-d8d31828e1e7",
+      "zone_slug": "pune-grid-r2-c2",
+      "mapped_waterway_distance_m": 92.79,
+      "mapped_drain_distance_m": 2431.64,
+      "mapped_culvert_count": 1
+    },
+    {
+      "zone_id": "f87edca6-1f2d-555d-b35e-5f7a0967258d",
+      "zone_slug": "pune-grid-r2-c3",
+      "mapped_waterway_distance_m": 650.83,
+      "mapped_drain_distance_m": 2840.65,
+      "mapped_culvert_count": 3
+    },
+    {
+      "zone_id": "3b74def4-b2ed-5ae6-af34-9577e29083ef",
+      "zone_slug": "pune-grid-r3-c1",
+      "mapped_waterway_distance_m": 599.7,
+      "mapped_drain_distance_m": 3669.62,
+      "mapped_culvert_count": 3
+    },
+    {
+      "zone_id": "e20aec1f-ba7d-5193-b7c7-6f17eb88323a",
+      "zone_slug": "pune-grid-r3-c2",
+      "mapped_waterway_distance_m": 563.15,
+      "mapped_drain_distance_m": 5573.41,
+      "mapped_culvert_count": 0
+    },
+    {
+      "zone_id": "a750c628-b06a-5e19-8403-e27f0f741b4f",
+      "zone_slug": "pune-grid-r3-c3",
+      "mapped_waterway_distance_m": 1889.62,
+      "mapped_drain_distance_m": 1889.62,
+      "mapped_culvert_count": 3
+    }
+  ],
+  "database_status": "committed",
+  "database_inserted_waterways": 0,
+  "database_existing_waterways": 213,
+  "database_zone_metrics_upserted": 9
+}

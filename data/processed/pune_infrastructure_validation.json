@@ -1,0 +1,403 @@
+{
+  "summary": {
+    "source": "OpenStreetMap GeoJSON",
+    "source_file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_infrastructure.geojson",
+    "source_sha256": "3bafef8adaa266e2c589b2bb288ffc6729368143e725b2a115ab60b630292cf7",
+    "osm_timestamp": "2026-10-29T09:39:21Z",
+    "source_copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+    "feature_count": 6542,
+    "facility_candidates": 1030,
+    "facility_counts": {
+      "fire_station": 20,
+      "hospital": 692,
+      "school": 318
+    },
+    "road_candidates": 5438,
+    "road_counts": {
+      "primary": 1570,
+      "secondary": 1201,
+      "tertiary": 2667
+    },
+    "ignored_unclassified": 0,
+    "duplicate_osm_ids": 0,
+    "failed_records": 74,
+    "database_status": "not_attempted",
+    "database_inserted_facilities": 0,
+    "database_inserted_roads": 0,
+    "database_existing_facilities": null,
+    "database_existing_roads": null
+  },
+  "failed_records": [
+    {
+      "feature_index": 115,
+      "osm_ref": "way/301018026",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 133,
+      "osm_ref": "way/359554796",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 134,
+      "osm_ref": "way/359571957",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 137,
+      "osm_ref": "way/359746914",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 170,
+      "osm_ref": "way/448218376",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 171,
+      "osm_ref": "way/448218377",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 180,
+      "osm_ref": "way/641140495",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 187,
+      "osm_ref": "way/800385393",
+      "reason": "unsupported_road_geometry: Polygon"
+    },
+    {
+      "feature_index": 188,
+      "osm_ref": "way/821306773",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 196,
+      "osm_ref": "way/1031860555",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 197,
+      "osm_ref": "way/1053895577",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 204,
+      "osm_ref": "way/1092805747",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 208,
+      "osm_ref": "way/1105747977",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 213,
+      "osm_ref": "way/1123876090",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 232,
+      "osm_ref": "way/1271492108",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 233,
+      "osm_ref": "way/1271897720",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 237,
+      "osm_ref": "way/1274590541",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 245,
+      "osm_ref": "way/1386960250",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 246,
+      "osm_ref": "way/1395774684",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 265,
+      "osm_ref": "way/1459187088",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 266,
+      "osm_ref": "way/1459190962",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 268,
+      "osm_ref": "way/1459987738",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 269,
+      "osm_ref": "way/1460410123",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 276,
+      "osm_ref": "way/1517384413",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 282,
+      "osm_ref": "way/1550971041",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 283,
+      "osm_ref": "way/1550971042",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 284,
+      "osm_ref": "way/1550971043",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 285,
+      "osm_ref": "way/1550971044",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 286,
+      "osm_ref": "way/1550971045",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 287,
+      "osm_ref": "way/1550971046",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 288,
+      "osm_ref": "way/1550971047",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 290,
+      "osm_ref": "way/1558111967",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 5778,
+      "osm_ref": "node/4165722691",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6163,
+      "osm_ref": "node/8272614789",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6228,
+      "osm_ref": "node/10172914049",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6241,
+      "osm_ref": "node/10172966009",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6272,
+      "osm_ref": "node/10219159607",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6273,
+      "osm_ref": "node/10219159608",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6274,
+      "osm_ref": "node/10219159609",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6275,
+      "osm_ref": "node/10219159610",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6276,
+      "osm_ref": "node/10219159611",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6277,
+      "osm_ref": "node/10219159612",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6278,
+      "osm_ref": "node/10219159614",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6279,
+      "osm_ref": "node/10219159615",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6294,
+      "osm_ref": "node/10219216817",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6295,
+      "osm_ref": "node/10219216818",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6296,
+      "osm_ref": "node/10219216819",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6297,
+      "osm_ref": "node/10219216821",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6298,
+      "osm_ref": "node/10219216822",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6299,
+      "osm_ref": "node/10219216823",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6300,
+      "osm_ref": "node/10219216824",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6301,
+      "osm_ref": "node/10219216825",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6302,
+      "osm_ref": "node/10219216826",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6303,
+      "osm_ref": "node/10219216827",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6304,
+      "osm_ref": "node/10219216828",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6320,
+      "osm_ref": "node/10219240225",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6321,
+      "osm_ref": "node/10219240226",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6322,
+      "osm_ref": "node/10219240227",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6323,
+      "osm_ref": "node/10219240228",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6324,
+      "osm_ref": "node/10219240229",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6325,
+      "osm_ref": "node/10219240230",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6326,
+      "osm_ref": "node/10219240231",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6327,
+      "osm_ref": "node/10219240232",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6328,
+      "osm_ref": "node/10219240233",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6329,
+      "osm_ref": "node/10219240234",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6330,
+      "osm_ref": "node/10219240235",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6367,
+      "osm_ref": "node/10595648368",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6370,
+      "osm_ref": "node/10654184123",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6429,
+      "osm_ref": "node/10724999583",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6451,
+      "osm_ref": "node/11508114799",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6468,
+      "osm_ref": "node/12085061433",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6469,
+      "osm_ref": "node/12085088227",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6470,
+      "osm_ref": "node/12176164667",
+      "reason": "facility_missing_source_name"
+    },
+    {
+      "feature_index": 6488,
+      "osm_ref": "node/13380447645",
+      "reason": "facility_missing_source_name"
+    }
+  ],
+  "duplicate_osm_ids": []
+}

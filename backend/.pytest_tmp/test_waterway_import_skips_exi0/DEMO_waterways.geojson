@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"@id": "way/123", "waterway": "drain"}, "geometry": {"type": "LineString", "coordinates": [[73.84, 18.52], [73.85, 18.53]]}}]}

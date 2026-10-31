@@ -1,0 +1,2 @@
+-r requirements-geo.txt
+pytest>=8,<9

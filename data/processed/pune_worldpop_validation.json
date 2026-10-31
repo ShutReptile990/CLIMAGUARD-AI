@@ -1,0 +1,123 @@
+{
+  "source": "WorldPop Global2 API v2",
+  "dataset_year": 2025,
+  "spatial_resolution": "100m",
+  "retrieved_at_utc": "2026-10-29T15:45:28.027020+00:00",
+  "zones_covered": 9,
+  "zones_missing": 0,
+  "records": [
+    {
+      "zone_id": "c74abcf0-6b74-5fe2-ab83-4aafd31161c1",
+      "zone_slug": "pune-grid-r1-c1",
+      "population_estimate": 318802,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:18.759691+00:00",
+      "task_id": "7bd09be0-c71e-46f3-a935-4af2222cf794",
+      "geometry_sha256": "c320fcda049ddec7a3a41af33e3c93d60bda7ed5f9f6ce99ee25f58bcafa80d1"
+    },
+    {
+      "zone_id": "ab285537-6c72-5cfb-b71a-2a0918691c2a",
+      "zone_slug": "pune-grid-r1-c2",
+      "population_estimate": 385739,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:19.104509+00:00",
+      "task_id": "79ef0ae9-61ae-4cdc-8f37-a1460fedebf2",
+      "geometry_sha256": "6f761706d7636d740be0948a605358956e420706bc508a3e7c0ecff34a89b897"
+    },
+    {
+      "zone_id": "0231fe4a-197b-502c-8225-e174d92b0325",
+      "zone_slug": "pune-grid-r1-c3",
+      "population_estimate": 282065,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:19.451883+00:00",
+      "task_id": "6bc17547-d946-4181-8169-b065b4b4e6b1",
+      "geometry_sha256": "d79265a0a49018d7d453985785be941b00b9ad0218837a2606bf9cbbeee67481"
+    },
+    {
+      "zone_id": "dc2699fb-d6b5-5722-91e5-3ee96af48f66",
+      "zone_slug": "pune-grid-r2-c1",
+      "population_estimate": 273655,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:19.797275+00:00",
+      "task_id": "c0bd28d1-fe00-4578-b4fa-96497e24a701",
+      "geometry_sha256": "1c578cf2c38576476ee32ba97d37c8eb5423d42f3f8516b5d661704e2f9589a7"
+    },
+    {
+      "zone_id": "e631d13e-ba9d-576d-b97d-d8d31828e1e7",
+      "zone_slug": "pune-grid-r2-c2",
+      "population_estimate": 442545,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:20.146088+00:00",
+      "task_id": "dfc9765f-8f1d-4c5b-ae3a-1df87fcd459b",
+      "geometry_sha256": "babd11edeb5f487193f0b36706da398cb8cb21fceeebca21a4cc97c1348b489a"
+    },
+    {
+      "zone_id": "f87edca6-1f2d-555d-b35e-5f7a0967258d",
+      "zone_slug": "pune-grid-r2-c3",
+      "population_estimate": 359025,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:20.485561+00:00",
+      "task_id": "de4cfbf3-60a1-42b4-9e49-7e4afc6afa5c",
+      "geometry_sha256": "cdb4d47422f57ed35b1fddcf77230bf6c4f1fcf9c9b6add35880cfc3225a3c92"
+    },
+    {
+      "zone_id": "3b74def4-b2ed-5ae6-af34-9577e29083ef",
+      "zone_slug": "pune-grid-r3-c1",
+      "population_estimate": 389686,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:20.824932+00:00",
+      "task_id": "cb958acb-d279-446d-9b60-48ad0bf8b04c",
+      "geometry_sha256": "82a8969a1896dc367de689a24184edc900153b9996331a404694f95890dfebd6"
+    },
+    {
+      "zone_id": "e20aec1f-ba7d-5193-b7c7-6f17eb88323a",
+      "zone_slug": "pune-grid-r3-c2",
+      "population_estimate": 244513,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:21.165909+00:00",
+      "task_id": "adf2c74b-af64-4a5e-8478-a754efcd6578",
+      "geometry_sha256": "bd36128554d548f762466ef33ad33da6e6228d0d2add99cd04790cbf215eed56"
+    },
+    {
+      "zone_id": "a750c628-b06a-5e19-8403-e27f0f741b4f",
+      "zone_slug": "pune-grid-r3-c3",
+      "population_estimate": 279472,
+      "source": "WorldPop Global2 API v2",
+      "source_url": "https://api.worldpop.org/v2",
+      "dataset_year": 2025,
+      "spatial_resolution": "100m",
+      "retrieved_at_utc": "2026-10-29T15:45:28.025508+00:00",
+      "task_id": "aeeb1dce-5866-4a84-a12e-2bc899a82ebe",
+      "geometry_sha256": "01c976fb969ab7e63d102bf099d3c58a68052f01ab2c165c45d7396f3c6fff41"
+    }
+  ],
+  "errors": [],
+  "database_status": "committed",
+  "database_checked_at_utc": "2026-10-30T14:56:07.454538+00:00",
+  "database_rows_present": 9,
+  "database_rows_inserted_last_run": 0
+}

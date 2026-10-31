@@ -1,0 +1,16 @@
+
+{
+  "dataset_version": "pune-terrain-population-v1",
+  "sources": {
+    "dem": "European Space Agency (2024). Copernicus Global Digital Elevation Model. Distributed by OpenTopography. DOI: 10.5069/G9028PQB. Accessed 2026-10-30.",
+    "population": "WorldPop Global2 API v2, 2025, 100 m population estimates"
+  },
+  "dem_source": "Copernicus DEM GLO-30 (COP30), OpenTopography",
+  "dem_licence": "Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.",
+  "population_source": "WorldPop Global2 API v2",
+  "elevation_unit": "metres",
+  "population_unit": "people",
+  "population_year": 2025,
+  "population_resolution": 100,
+  "retrieved_at_utc": "2026-10-30T15:47:02Z"
+}

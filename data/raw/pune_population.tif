@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Pune Region",
+        "description": "Approximate Pune analysis area, not official municipal boundary"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [73.70, 18.40],
+            [74.02, 18.40],
+            [74.02, 18.65],
+            [73.70, 18.65],
+            [73.70, 18.40]
+          ]
+        ]
+      }
+    }
+  ]
+}

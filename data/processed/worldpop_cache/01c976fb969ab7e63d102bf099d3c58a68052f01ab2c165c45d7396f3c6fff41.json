@@ -1,0 +1,12 @@
+{
+  "zone_id": "a750c628-b06a-5e19-8403-e27f0f741b4f",
+  "zone_slug": "pune-grid-r3-c3",
+  "population_estimate": 279472,
+  "source": "WorldPop Global2 API v2",
+  "source_url": "https://api.worldpop.org/v2",
+  "dataset_year": 2025,
+  "spatial_resolution": "100m",
+  "retrieved_at_utc": "2026-10-29T15:45:28.025508+00:00",
+  "task_id": "aeeb1dce-5866-4a84-a12e-2bc899a82ebe",
+  "geometry_sha256": "01c976fb969ab7e63d102bf099d3c58a68052f01ab2c165c45d7396f3c6fff41"
+}

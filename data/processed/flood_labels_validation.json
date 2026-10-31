@@ -1,0 +1,8 @@
+{
+  "source_file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\backend\\examples\\verified_flood_labels.csv",
+  "valid_count": 0,
+  "positive_labels": 0,
+  "verified_negative_labels": 0,
+  "failed_records": [],
+  "database_status": "not_attempted"
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+__pycache__/
+.venv/
+.deps/
+.pytest_cache/
+*.tsbuildinfo
+!.envexample
+*.pyc
+.coverage
+htmlcov/

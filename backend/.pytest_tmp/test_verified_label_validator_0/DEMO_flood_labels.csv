@@ -1,0 +1,4 @@
+event_id,event_date,latitude,longitude,source,temporal_resolution_hours,observed_flood_status,verification_reference,observation_method
+DEMO-1,2025-08-01T12:00:00+00:00,18.525,73.865,DEMO source,24,true,DEMO reference,field survey
+DEMO-2,2025-08-01T12:00:00+00:00,18.525,73.865,DEMO source,24,false,DEMO reference,field survey
+DEMO-3,2025-08-01T12:00:00+00:00,18.525,73.865,DEMO source,24,unknown,DEMO reference,field survey
