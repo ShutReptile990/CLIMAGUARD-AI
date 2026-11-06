@@ -21,11 +21,11 @@
     "ignored_unclassified": 0,
     "duplicate_osm_ids": 0,
     "failed_records": 74,
-    "database_status": "not_attempted",
+    "database_status": "committed_and_verified",
     "database_inserted_facilities": 0,
     "database_inserted_roads": 0,
-    "database_existing_facilities": null,
-    "database_existing_roads": null
+    "database_existing_facilities": 1030,
+    "database_existing_roads": 5438
   },
   "failed_records": [
     {

@@ -1,12 +1,14 @@
 """Validate a local OSM GeoJSON and insert only new records into PostGIS.
 
-Validation is the default. Database writes require --import-db and DATABASE_URL.
+Validation is the default. Database writes require --import-db and DATABASE_URL,
+or --import-supabase with server-side Supabase credentials.
 Existing rows are never updated or deleted.
 """
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -15,12 +17,15 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
+from uuid import NAMESPACE_URL, uuid5
 
 from shapely.geometry import shape
 from shapely.geometry.base import BaseGeometry
 from shapely.errors import GEOSException
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "backend"))
 DEFAULT_INPUT = ROOT / "data" / "raw" / "pune_infrastructure.geojson"
 DEFAULT_REPORT = ROOT / "data" / "processed" / "pune_infrastructure_validation.json"
 # Broad Pune file sanity envelope, not an administrative boundary.
@@ -191,11 +196,94 @@ def import_database(batch: ImportBatch, database_url: str) -> dict:
     return {"database_status": "committed", "database_inserted_facilities": inserted_facilities, "database_inserted_roads": inserted_roads, "database_existing_facilities": len(batch.facilities) - inserted_facilities, "database_existing_roads": len(batch.roads) - inserted_roads}
 
 
+async def import_supabase(batch: ImportBatch) -> dict:
+    """Resume-safe insert-only import using the configured server-side credential."""
+    from app.core.config import get_settings
+    from app.integrations.supabase import SupabaseGateway
+
+    settings = get_settings()
+    if not (settings.configured and settings.supabase_secret_key):
+        raise RuntimeError("SUPABASE_URL and SUPABASE_SECRET_KEY are required for --import-supabase")
+    gateway = SupabaseGateway(settings)
+
+    async def existing_keys(table: str) -> set[tuple[str, int]]:
+        found: set[tuple[str, int]] = set()
+        offset = 0
+        while True:
+            rows = await gateway.table(table, privileged=True, params={
+                "select": "osm_type,osm_id", "source": "eq.OpenStreetMap",
+                "order": "osm_type,osm_id", "limit": 1000, "offset": offset,
+            })
+            if not isinstance(rows, list):
+                raise RuntimeError(f"Unexpected {table} readback")
+            found.update((row["osm_type"], int(row["osm_id"])) for row in rows if row.get("osm_type") and row.get("osm_id") is not None)
+            if len(rows) < 1000:
+                return found
+            offset += len(rows)
+
+    def facility_row(item: dict) -> dict:
+        lng, lat = item["marker"]
+        return {
+            "id": str(uuid5(NAMESPACE_URL, f"climaguard-osm/{item['osm_ref']}")),
+            "name": item["name"], "kind": item["kind"],
+            "location": f"SRID=4326;POINT({lng} {lat})",
+            "osm_geometry": f"SRID=4326;{shape(item['geometry']).wkt}",
+            "source": "OpenStreetMap", "osm_type": item["osm_type"], "osm_id": item["osm_id"],
+            "osm_tags": item["tags"],
+        }
+
+    def road_row(item: dict) -> dict:
+        return {
+            "id": str(uuid5(NAMESPACE_URL, f"climaguard-osm/{item['osm_ref']}")),
+            "name": item["name"], "highway_class": item["highway_class"],
+            "geometry": f"SRID=4326;{shape(item['geometry']).wkt}",
+            "source": "OpenStreetMap", "osm_type": item["osm_type"], "osm_id": item["osm_id"],
+            "osm_tags": item["tags"],
+        }
+
+    try:
+        before_facilities = await existing_keys("infrastructure")
+        before_roads = await existing_keys("osm_roads")
+        missing_facilities = [item for item in batch.facilities if (item["osm_type"], item["osm_id"]) not in before_facilities]
+        missing_roads = [item for item in batch.roads if (item["osm_type"], item["osm_id"]) not in before_roads]
+        for table, items, converter in (
+            ("infrastructure", missing_facilities, facility_row),
+            ("osm_roads", missing_roads, road_row),
+        ):
+            for start in range(0, len(items), 100):
+                rows = [converter(item) for item in items[start:start + 100]]
+                await gateway.table(table, "POST", privileged=True, params={"select": "id"},
+                    json=rows, prefer="resolution=ignore-duplicates,return=minimal")
+        after_facilities = await existing_keys("infrastructure")
+        after_roads = await existing_keys("osm_roads")
+        facility_keys = {(item["osm_type"], item["osm_id"]) for item in batch.facilities}
+        road_keys = {(item["osm_type"], item["osm_id"]) for item in batch.roads}
+        if not facility_keys <= after_facilities or not road_keys <= after_roads:
+            raise RuntimeError("Supabase readback is missing one or more validated OSM IDs; rerun the insert-only import")
+        inserted_facilities = len(after_facilities - before_facilities)
+        inserted_roads = len(after_roads - before_roads)
+        provenance = {**batch.metadata, "candidate_facilities": len(batch.facilities),
+            "candidate_roads": len(batch.roads), "existing_facilities_skipped": len(batch.facilities) - inserted_facilities,
+            "existing_roads_skipped": len(batch.roads) - inserted_roads, "failed_record_count": len(batch.failures),
+            "import_method": "Supabase REST insert-only EPSG:4326 EWKT"}
+        await gateway.table("osm_import_runs", "POST", privileged=True,
+            json={"facility_count": inserted_facilities, "road_count": inserted_roads, "provenance": provenance},
+            prefer="return=minimal")
+        return {"database_status": "committed_and_verified",
+                "database_inserted_facilities": inserted_facilities, "database_inserted_roads": inserted_roads,
+                "database_existing_facilities": len(batch.facilities) - inserted_facilities,
+                "database_existing_roads": len(batch.roads) - inserted_roads}
+    finally:
+        await gateway.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate a Pune OSM GeoJSON; optionally insert only missing records into PostGIS")
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
-    parser.add_argument("--import-db", action="store_true", help="Insert new rows using DATABASE_URL; existing rows are left untouched")
+    import_mode = parser.add_mutually_exclusive_group()
+    import_mode.add_argument("--import-db", action="store_true", help="Insert new rows using DATABASE_URL; existing rows are left untouched")
+    import_mode.add_argument("--import-supabase", action="store_true", help="Insert new rows using the server-side Supabase credential; existing rows are left untouched")
     args = parser.parse_args()
     batch = parse_geojson(args.input)
     summary = batch.summary()
@@ -208,6 +296,14 @@ def main() -> None:
         if not database_url:
             raise SystemExit("DATABASE_URL is required for --import-db; validation can run without it")
         summary.update(import_database(batch, database_url))
+        save_report()
+    if args.import_supabase:
+        try:
+            summary.update(asyncio.run(import_supabase(batch)))
+        except Exception as exc:
+            summary.update({"database_status": "incomplete", "database_error_type": type(exc).__name__})
+            save_report()
+            raise
         save_report()
     print(json.dumps(summary, ensure_ascii=True))
 

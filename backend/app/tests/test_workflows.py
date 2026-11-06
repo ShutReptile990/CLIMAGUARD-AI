@@ -8,13 +8,14 @@ import httpx
 import pytest
 from fastapi import HTTPException
 
-from app.api.alerts import AlertPublish, AlertReview, public_alerts, publish_alert, review_alert, submit_alert
+from app.api.alerts import AlertPublish, AlertReview, alert_history, create_alert, edit_published_alert, public_alerts, publish_alert, review_alert, submit_alert
 from app.api.incidents import create_incident, review_incident
 from app.core.auth import Principal
 from app.core.errors import ServiceUnavailable, SupabaseRequestError, UpstreamError
 from app.main import app
 from app.integrations.supabase import get_gateway
 from app.schemas.incidents import IncidentCreate, IncidentReview
+from app.schemas.alerts import AlertCreate, AlertEdit
 
 
 def principal(role="authority"):
@@ -37,17 +38,30 @@ def test_public_alerts_exclude_expired_records():
     assert len(asyncio.run(public_alerts(Database(), "pune-grid-r2-c2"))) == 1
 
 
-def test_alert_author_cannot_review_own_draft():
+def test_public_alerts_require_published_state_and_cell_filter():
+    class Database:
+        async def table(self, table, method="GET", **kwargs):
+            assert kwargs["params"]["status"] == "eq.published"
+            assert kwargs["params"]["locality_id"] == "in.(pune,pune-grid-r2-c2)"
+            assert kwargs["params"]["order"] == "published_at.desc.nullslast"
+            return [alert_row(), {**alert_row(), "localityId": "pune"}, {**alert_row(), "status": "draft"},
+                    {**alert_row(), "status": "withdrawn"}]
+
+    alerts = asyncio.run(public_alerts(Database(), "pune-grid-r2-c2"))
+    assert len(alerts) == 2 and {alert.localityId for alert in alerts} == {"pune", "pune-grid-r2-c2"}
+
+
+def test_self_approval_waits_for_migration_010():
     author = principal()
     class Database:
         async def table(self, table, method="GET", **kwargs):
-            if kwargs["params"].get("limit") == 0:
-                return []
+            if kwargs["params"].get("select") == "incident_id":
+                raise UpstreamError("column unavailable")
             return [{"status": "pending_approval", "created_by": str(author.id)}]
     async def run():
-        with pytest.raises(HTTPException) as error:
+        with pytest.raises(ServiceUnavailable) as error:
             await review_alert(uuid4(), AlertReview(approve=True), author, Database())
-        assert error.value.status_code == 403
+        assert "migration 010" in error.value.detail
     asyncio.run(run())
 
 
@@ -68,8 +82,8 @@ def test_alert_submit_rejects_other_author_and_publish_rejects_invalid_expiry():
     asyncio.run(run())
 
 
-def test_two_authority_alert_lifecycle_uses_expected_state_updates():
-    author, reviewer = principal(), principal()
+def test_single_authority_alert_lifecycle_uses_expected_state_updates():
+    author = principal()
     row = {"id": str(uuid4()), "title": "Verified weather advisory", "body": "Follow local authority updates and prepare for changing conditions.",
            "level": "moderate", "locality_id": "pune-grid-r2-c2", "source": "Verified bulletin", "status": "draft",
            "approved_at": None, "created_at": datetime.now(timezone.utc).isoformat(), "created_by": str(author.id)}
@@ -80,7 +94,9 @@ def test_two_authority_alert_lifecycle_uses_expected_state_updates():
                 return []
             if method == "GET":
                 return [row.copy()]
-            assert method == "PATCH" and kwargs["params"]["status"] == f"eq.{row['status']}"
+            assert method == "PATCH"
+            if kwargs["params"]["status"] != f"eq.{row['status']}":
+                return []
             row.update(kwargs["json"])
             transitions.append(row["status"])
             return [row.copy()]
@@ -89,12 +105,78 @@ def test_two_authority_alert_lifecycle_uses_expected_state_updates():
         alert_id = uuid4()
         submitted = await submit_alert(alert_id, author, database)
         assert submitted.status == "pending_approval"
-        approved = await review_alert(alert_id, AlertReview(approve=True), reviewer, database)
-        assert approved.status == "approved" and approved.approvedBy == reviewer.id
+        approved = await review_alert(alert_id, AlertReview(approve=True), author, database)
+        assert approved.status == "approved" and approved.approvedBy == author.id
         published = await publish_alert(alert_id, AlertPublish(expires_at=datetime.now(timezone.utc) + timedelta(hours=2)), author, database)
         assert published.status == "published" and published.expiresAt is not None
+        with pytest.raises(HTTPException) as duplicate:
+            await publish_alert(alert_id, AlertPublish(expires_at=datetime.now(timezone.utc) + timedelta(hours=2)), author, database)
+        assert duplicate.value.status_code == 409
     asyncio.run(run())
     assert transitions == ["pending_approval", "approved", "published"]
+
+
+def test_linked_advisory_requires_verified_incident_in_same_zone():
+    author, incident_id, zone_id = principal(), uuid4(), uuid4()
+    body = AlertCreate(title="TEST weather update", body="Please check official local updates before travel.",
+        level="moderate", localityId="pune-grid-r2-c2", source="Verified report and live analysis",
+        incidentId=incident_id)
+    class Database:
+        def __init__(self, incident_status="resolved", incident_zone=zone_id):
+            self.incident_status, self.incident_zone = incident_status, incident_zone
+            self.inserted = None
+        async def table(self, table, method="GET", **kwargs):
+            if method == "GET" and table == "zones":
+                return [{"id": str(zone_id)}]
+            if method == "GET" and table == "incident_reports":
+                return [{"id": str(incident_id), "status": self.incident_status,
+                         "locality_id": "pune-grid-r2-c2", "zone_id": str(self.incident_zone)}]
+            if method == "GET" and table == "alerts":
+                return [{"incident_id": None}]
+            if method == "POST" and table == "alerts":
+                self.inserted = kwargs["json"]
+                return [{"id": str(uuid4()), **self.inserted, "created_at": datetime.now(timezone.utc).isoformat(),
+                         "approved_at": None}]
+            raise AssertionError((table, method, kwargs))
+    async def run():
+        valid = Database()
+        result = await create_alert(body, author, valid)
+        assert result.incidentId == incident_id and valid.inserted["incident_id"] == str(incident_id)
+        for invalid in (Database("submitted"), Database(incident_zone=uuid4())):
+            with pytest.raises(HTTPException) as error:
+                await create_alert(body, author, invalid)
+            assert error.value.status_code == 422 and invalid.inserted is None
+    asyncio.run(run())
+
+
+def test_published_alert_edit_and_audit_history_require_authority():
+    author, alert_id = principal(), uuid4()
+    row = {"id": str(alert_id), "title": "TEST weather update", "body": "Please check official local updates before travel.",
+           "level": "moderate", "locality_id": "pune-grid-r2-c2", "source": "Verified source",
+           "status": "published", "approved_at": datetime.now(timezone.utc).isoformat(),
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    class Database:
+        async def table(self, table, method="GET", **kwargs):
+            if table == "alerts" and method == "GET":
+                return [row.copy()]
+            if table == "alerts" and method == "PATCH":
+                assert kwargs["params"]["status"] == "eq.published"
+                assert "approved_by" not in kwargs["json"] and "expires_at" not in kwargs["json"]
+                row.update(kwargs["json"])
+                return [row.copy()]
+            if table == "audit_logs":
+                assert kwargs["privileged"] and kwargs["params"]["entity_id"] == f"eq.{alert_id}"
+                return [{"actor_id": str(author.id), "created_at": datetime.now(timezone.utc).isoformat(),
+                         "action": "alerts.edited", "details": {"status": "published", "changed_fields": ["body"]}}]
+            raise AssertionError((table, method))
+    async def run():
+        database = Database()
+        edited = await edit_published_alert(alert_id, AlertEdit(title=row["title"], body="Updated official guidance for this analysis cell.",
+            level="moderate", source="Verified source"), author, database)
+        assert edited.status == "published" and edited.body.startswith("Updated")
+        history = await alert_history(alert_id, author, database)
+        assert history[0].actorId == author.id and history[0].changedFields == ["body"]
+    asyncio.run(run())
 
 
 def test_incident_image_path_cannot_belong_to_another_user():
@@ -228,7 +310,12 @@ def test_citizen_role_cannot_call_authority_review_routes():
             headers = {"Authorization": "Bearer DEMO-token"}
             incident = await client.patch(f"/api/incidents/{uuid4()}/review", headers=headers, json={"status": "under_review"})
             alert = await client.post(f"/api/alerts/{uuid4()}/review", headers=headers, json={"approve": True})
-            assert incident.status_code == alert.status_code == 403
+            published_edit = await client.patch(f"/api/alerts/{uuid4()}/published", headers=headers,
+                json={"title": "TEST update", "body": "A valid official update for this analysis cell.",
+                      "level": "moderate", "source": "Verified source", "hazard": "other"})
+            history = await client.get(f"/api/alerts/{uuid4()}/history", headers=headers)
+            assert incident.status_code == alert.status_code == published_edit.status_code == history.status_code == 403
+            assert (await client.post(f"/api/alerts/{uuid4()}/review", json={"approve": True})).status_code == 401
     try:
         asyncio.run(run())
     finally:

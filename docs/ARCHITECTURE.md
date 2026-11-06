@@ -1,10 +1,28 @@
-# Architecture
+# CLIMAGUARD AI system architecture
 
-- `frontend/`: React, TypeScript, Vite, Tailwind, shadcn-style UI primitives, React Router, TanStack Query, React Leaflet, Recharts.
-- `backend/`: modular FastAPI API, Pydantic validation, Supabase Auth verification, role checks, pooled HTTP integration, and typed repositories.
-- `database/`: Supabase PostgreSQL/PostGIS migrations and RLS policies.
-- `ml/`: planned hazard models and evaluation.
+CLIMAGUARD AI is a Pune pilot with nine reproducible grid cells. They are analysis cells, not municipal wards or flood-inundation polygons. The application has separate citizen and authority views over one shared selected cell.
 
-The frontend starts in an explicitly labeled demo mode with illustrative scenario values. Live mode calls `/api/v1` through the Vite proxy. FastAPI normalizes and caches Open-Meteo forecast, archive, and air-quality responses, and conditionally persists selected current model estimates through Supabase. Versioned deterministic flood, heat and US AQI rules return explanations and missing-data warnings. The simulator substitutes hypothetical inputs without writing forecasts. A deterministic 3×3 Pune analysis grid and screening bins power the Leaflet map. OSM facility and road layers read from PostGIS after a manual import; a security-invoker spatial function returns cell intersections and sourced population metrics. Missing upstream data returns unavailable states. Demo incident reports are stored only in local browser storage and are never sent to authorities.
+```mermaid
+flowchart LR
+  Browser[React citizen and authority portals] -->|HTTPS, bearer JWT| API[FastAPI]
+  Browser -->|publishable key, Auth and private evidence upload| Auth[Supabase Auth and Storage]
+  API -->|validate JWT and role| Auth
+  API -->|user JWT for protected writes; server key for ingestion| DB[(Supabase PostgreSQL and PostGIS)]
+  API -->|forecast, archive, US AQI| Meteo[Open-Meteo]
+  API -->|explicit aligned-model request| Nugen[Nugen model]
+  GIS[OSM, Copernicus DEM, WorldPop import tools] --> DB
+```
 
-The backend verifies each protected bearer token with Supabase Auth, then reads the role from the database. PostgREST requests use the user's token so RLS remains in force. Admin role assignment, environmental ingestion, and Nugen draft storage use the server-side secret key. Authority alert publication requires a reviewer other than the draft author. The map grid is not an official ward or flood boundary. DEM and validated hazard footprints remain dependencies. Deployed Nugen inference supplies guidance from deterministic live analysis; no substitute provider is configured.
+## Runtime data flow
+
+1. `frontend/` uses React, TypeScript, Vite, TanStack Query, Leaflet and Recharts. Shared context holds the selected `pune` overview or one grid-cell ID. Public screens call typed `/api/v1` routes; incident and authority screens attach a Supabase Auth access token. The browser contains only the Supabase publishable credential.
+2. `backend/app/main.py` configures CORS, exception handlers, request logging, lifespan clients and typed FastAPI routes. Auth dependency verifies the token with Supabase Auth, then reads the profile role using the user token. Protected PostgREST writes retain RLS. Server-side credentials are used only for privileged ingestion/audited operations.
+3. Open-Meteo Forecast supplies current model estimates and forecast periods. Air Quality supplies **US AQI** and pollutants, not Indian AQI. Historical Archive supplies reanalysis. The backend validates units/timestamps, caches bounded requests, and returns explicit unavailable streams on provider failure. Selected current values can be persisted in Supabase.
+4. Deterministic flood, heat and air-quality rules create risk assessments with source times, factors and limitations. The flood score is a **heuristic index**, not a calibrated probability. The simulator remains separate from real forecasts. No trained flood model or validated hazard footprint exists.
+5. PostGIS stores nine zone geometries, WorldPop estimates, sourced Copernicus slope, mapped-drain proximity and 213 OSM waterways. Exposure reports geographic co-location; it does not assert physical damage. Potential flood-exposed population is unavailable without a validated hazard footprint. Hospital/school/road maps currently fall back to a validated local OSM GeoJSON preview because no `osm_import_runs` record exists in the live project.
+6. The deployed Nugen-aligned model (`model_01m66gqc3qk10zdy`) receives source-backed deterministic analysis only after a user presses Generate. Pydantic validates output; unsupported numeric claims are rejected and deterministic levels stay under backend control. Successful inference stores an unapproved recommendation draft with provenance. No other LLM provider is configured.
+7. Citizen reports enter `submitted`, then authorized review can move them to `under_review` and `resolved` or `rejected`. Database triggers enforce transitions and write audit history. A verified incident can be linked to an advisory draft for the same grid cell. Migration 010 allows the same authenticated authority to edit, submit, explicitly approve and publish the advisory with an expiry. Published edits and withdrawals are audited. Nugen cannot approve or publish. Only published, unexpired alerts are returned as active by the API. Migration 010 was owner-applied; its column is confirmed, while a live self-approval transition remains to be tested.
+
+## Deployment boundary
+
+The prepared deployment uses Vercel for the Vite SPA, Render for FastAPI, the existing Supabase project, and the existing Nugen model. `frontend/vercel.json` handles route refreshes; `render.yaml` binds to the host-provided port. Exact public origins must be configured in backend CORS and Supabase Auth redirects. The project has **not** been publicly deployed or hosted-verified from this workspace; see [deployment steps](DEPLOYMENT.md) and [test evidence](FINAL_TEST_REPORT.md).

@@ -13,8 +13,8 @@ from app.main import app
 
 async def main() -> None:
     zone = sys.argv[1] if len(sys.argv) > 1 else "pune-grid-r2-c2"
-    if not re.fullmatch(r"pune-grid-r[1-3]-c[1-3]", zone):
-        raise SystemExit("Expected a Pune analysis grid cell slug.")
+    if zone != "pune" and not re.fullmatch(r"pune-grid-r[1-3]-c[1-3]", zone):
+        raise SystemExit("Expected Pune overview or a Pune analysis grid cell slug.")
     async with app.router.lifespan_context(app):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test", timeout=150) as client:
             status = await client.get("/api/nugen/status")

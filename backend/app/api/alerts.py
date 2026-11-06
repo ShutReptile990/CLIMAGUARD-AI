@@ -6,16 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import StringConstraints
 from typing import Annotated
 from app.core.auth import Principal, require_roles
-from app.core.errors import ServiceUnavailable, UpstreamError
+from app.core.errors import ServiceUnavailable, SupabaseRequestError, UpstreamError
 from app.integrations.supabase import SupabaseGateway, get_gateway
 from app.repositories.supabase import Repository
-from app.schemas.alerts import Alert, AlertCreate, AlertEdit, AlertPublish, AlertReview
+from app.schemas.alerts import Alert, AlertCreate, AlertEdit, AlertHistoryEntry, AlertPublish, AlertReview
 from app.services.workflow_schema import workflow_columns_ready
 
 router = APIRouter(tags=["alerts"])
-FIELDS = ("id,title,body,level,localityId:locality_id,source,status,approvedAt:approved_at,createdAt:created_at,"
-          "hazard,submittedAt:submitted_at,reviewedAt:reviewed_at,reviewNote:review_note,"
-          "publishedAt:published_at,expiresAt:expires_at,createdBy:created_by,approvedBy:approved_by")
+FIELDS_008 = ("id,title,body,level,localityId:locality_id,source,status,approvedAt:approved_at,createdAt:created_at,"
+              "hazard,submittedAt:submitted_at,reviewedAt:reviewed_at,reviewNote:review_note,"
+              "publishedAt:published_at,expiresAt:expires_at,createdBy:created_by,approvedBy:approved_by")
+FIELDS = FIELDS_008 + ",incidentId:incident_id"
 LEGACY_FIELDS = "id,title,body,level,localityId:locality_id,source,status,approvedAt:approved_at,createdAt:created_at"
 
 
@@ -23,6 +24,7 @@ def as_alert(row: dict) -> Alert:
     names = {"localityId": "locality_id", "approvedAt": "approved_at", "createdAt": "created_at",
              "submittedAt": "submitted_at", "reviewedAt": "reviewed_at", "reviewNote": "review_note",
              "publishedAt": "published_at", "expiresAt": "expires_at", "createdBy": "created_by", "approvedBy": "approved_by"}
+    names["incidentId"] = "incident_id"
     data = {**row, **{target: row[source] for target, source in names.items() if source in row and target not in row}}
     return Alert.model_validate({key: data[key] for key in Alert.model_fields if key in data})
 
@@ -33,21 +35,26 @@ async def _list(gateway: SupabaseGateway, *, token: str | None = None, filters: 
     try:
         return await repo.list("alerts", FIELDS, filters=filters, limit=limit, order="created_at.desc")
     except UpstreamError:
-        return await repo.list("alerts", LEGACY_FIELDS, filters=filters, limit=limit, order="created_at.desc")
+        try:
+            return await repo.list("alerts", FIELDS_008, filters=filters, limit=limit, order="created_at.desc")
+        except UpstreamError:
+            return await repo.list("alerts", LEGACY_FIELDS, filters=filters, limit=limit, order="created_at.desc")
 
 
 async def public_alerts(gateway: SupabaseGateway, locality_id: str | None = None, limit: int = 50) -> list[Alert]:
     filters = {"status": "eq.published"}
-    if locality_id:
-        filters["locality_id"] = f"eq.{locality_id}"
+    if locality_id and locality_id != "pune":
+        # A Pune-wide official alert applies to every analysis cell.
+        filters["locality_id"] = f"in.(pune,{locality_id})"
     now = datetime.now(timezone.utc)
     try:
-        rows = await Repository(gateway).list("alerts", FIELDS,
+        rows = await Repository(gateway).list("alerts", FIELDS_008,
             filters={**filters, "or": f"(expires_at.is.null,expires_at.gt.{now.isoformat()})"},
-            limit=limit, order="created_at.desc")
+            limit=limit, order="published_at.desc.nullslast")
     except UpstreamError:
         rows = await Repository(gateway).list("alerts", LEGACY_FIELDS, filters=filters, limit=limit, order="created_at.desc")
-    return [alert for row in rows if (alert := as_alert(row)).expiresAt is None or alert.expiresAt > now]
+    return [alert for row in rows if (alert := as_alert(row)).status == "published"
+            and (alert.expiresAt is None or alert.expiresAt > now)]
 
 
 @router.get("/alerts", response_model=list[Alert])
@@ -78,12 +85,27 @@ async def create_alert(body: AlertCreate, user: Principal = Depends(require_role
     ready = await workflow_columns_ready(gateway, "alerts", "hazard", user.token)
     if not ready and body.hazard != "other":
         raise ServiceUnavailable("Hazard-specific alert drafts require database migration 008.")
+    if body.incidentId:
+        if not await workflow_columns_ready(gateway, "alerts", "incident_id", user.token):
+            raise ServiceUnavailable("Incident-linked advisories require database migration 010.")
+        incident = await repo.one("incident_reports", body.incidentId, "id,status,locality_id,zone_id")
+        if incident is None:
+            raise HTTPException(404, "Linked incident not found.")
+        if incident["status"] != "resolved" or incident["locality_id"] != body.localityId or incident["zone_id"] != zones[0]["id"]:
+            raise HTTPException(422, "Advisory may link only to a verified incident in the selected analysis zone.")
     payload = {"zone_id": zones[0]["id"], "locality_id": body.localityId, "title": body.title,
         "body": body.body, "level": body.level.value, "source": body.source,
         "status": "draft", "created_by": str(user.id)}
     if ready:
         payload["hazard"] = body.hazard
-    row = await repo.insert("alerts", payload)
+    if body.incidentId:
+        payload["incident_id"] = str(body.incidentId)
+    try:
+        row = await repo.insert("alerts", payload)
+    except SupabaseRequestError as exc:
+        if body.incidentId and exc.code in {"P0001", "23503", "23514"}:
+            raise HTTPException(409, "Linked incident changed or no longer qualifies. Refresh the incident queue.") from exc
+        raise
     return as_alert(row)
 
 
@@ -99,9 +121,42 @@ async def edit_alert(alert_id: UUID, body: AlertEdit, user: Principal = Depends(
         "source": body.source, "hazard": body.hazard})
 
 
+@router.patch("/alerts/{alert_id}/published", response_model=Alert)
+async def edit_published_alert(alert_id: UUID, body: AlertEdit, user: Principal = Depends(require_roles("authority", "admin")), gateway: SupabaseGateway = Depends(get_gateway)):
+    if not await workflow_columns_ready(gateway, "alerts", "incident_id", user.token):
+        raise ServiceUnavailable("Published alert updates require database migration 010.")
+    current = await Repository(gateway, user.token).one("alerts", alert_id, "id,status")
+    if current is None:
+        raise HTTPException(404, "Alert not found.")
+    if current["status"] != "published":
+        raise HTTPException(409, "Only published alerts can be updated.")
+    return await _transition(gateway, user, alert_id, "published", {
+        "title": body.title, "body": body.body, "level": body.level.value,
+        "source": body.source, "hazard": body.hazard})
+
+
+@router.get("/alerts/{alert_id}/history", response_model=list[AlertHistoryEntry])
+async def alert_history(alert_id: UUID, user: Principal = Depends(require_roles("authority", "admin")), gateway: SupabaseGateway = Depends(get_gateway)):
+    current = await Repository(gateway, user.token).one("alerts", alert_id, "id")
+    if current is None:
+        raise HTTPException(404, "Alert not found.")
+    rows = await gateway.table("audit_logs", privileged=True,
+        params={"select": "actor_id,action,created_at,details", "entity_type": "eq.alerts",
+                "entity_id": f"eq.{alert_id}", "order": "created_at.asc", "limit": 100})
+    return [AlertHistoryEntry(actorId=row.get("actor_id"), createdAt=row["created_at"],
+        action=row["action"], oldStatus=(row.get("details") or {}).get("old_status"),
+        newStatus=(row.get("details") or {}).get("new_status"),
+        changedFields=(row.get("details") or {}).get("changed_fields") or []) for row in rows or []]
+
+
 async def _transition(gateway: SupabaseGateway, user: Principal, alert_id: UUID, expected: str, data: dict) -> Alert:
-    rows = await gateway.table("alerts", "PATCH", token=user.token,
-        params={"id": f"eq.{alert_id}", "status": f"eq.{expected}"}, json=data, prefer="return=representation")
+    try:
+        rows = await gateway.table("alerts", "PATCH", token=user.token,
+            params={"id": f"eq.{alert_id}", "status": f"eq.{expected}"}, json=data, prefer="return=representation")
+    except SupabaseRequestError as exc:
+        if exc.code in {"P0001", "23514"}:
+            raise HTTPException(409, "Alert transition was rejected by the database. Refresh the advisory queue.") from exc
+        raise
     if not isinstance(rows, list) or not rows:
         raise HTTPException(409, "Alert changed or is not in the required state.")
     return as_alert(rows[0])
@@ -124,8 +179,8 @@ async def review_alert(alert_id: UUID, body: AlertReview, user: Principal = Depe
     current = await Repository(gateway, user.token).one("alerts", alert_id)
     if current is None or current.get("status") != "pending_approval":
         raise HTTPException(409, "Only pending alerts can be reviewed.")
-    if current.get("created_by") == str(user.id):
-        raise HTTPException(403, "A different authority reviewer is required.")
+    if current.get("created_by") == str(user.id) and not await workflow_columns_ready(gateway, "alerts", "incident_id", user.token):
+        raise ServiceUnavailable("Single-authority approval requires database migration 010.")
     if not body.approve and not (body.reason or "").strip():
         raise HTTPException(422, "A rejection reason is required.")
     now = datetime.now(timezone.utc).isoformat()

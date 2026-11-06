@@ -1,15 +1,30 @@
-"""Ground Nugen guidance in deterministic live analyses and store draft evidence."""
+"""Ground Nugen guidance in live analysis or isolated hypothetical screening."""
 
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
 import logging
-from app.core.errors import ServiceUnavailable
+from fastapi import HTTPException
+from app.core.errors import NugenFailure
 from app.integrations.nugen import NugenClient
 from app.integrations.supabase import SupabaseGateway
-from app.schemas.nugen import GuidanceResponse, NugenAnalysisContext
-from app.services.analysis import AnalysisService, priority_result
-from app.services.zones import LEGACY_CENTERS, find_zone
+from app.schemas.analysis import ScenarioRequest
+from app.schemas.environment import EnvironmentBundle, StreamError
+from app.schemas.nugen import GuidanceRequest, GuidanceResponse, GuidanceScenario, NugenAnalysisContext
+from app.services.analysis import AnalysisService, assess_bundle, priority_result
+from app.services.zones import LEGACY_CENTERS, coordinates_for, find_zone
+
+
+# Explicit hypothetical inputs. There is no AQI simulator, so none is invented.
+SCENARIOS = {
+    "extreme_rainfall": GuidanceScenario(id="extreme_rainfall", label="Extreme rainfall", rainfall_intensity_mm_h=40,
+        rainfall_duration_hours=6, limitation="Hypothetical rainfall intensity; no forecast, observed flood or inundation boundary."),
+    "severe_heat": GuidanceScenario(id="severe_heat", label="Severe heat", temperature_c=43, humidity_percent=60,
+        limitation="Hypothetical temperature and humidity; not an official heatwave warning."),
+    "combined_stress": GuidanceScenario(id="combined_stress", label="Rainfall and heat", rainfall_intensity_mm_h=30,
+        rainfall_duration_hours=6, temperature_c=41, humidity_percent=60,
+        limitation="Hypothetical rainfall, temperature and humidity; air quality is not simulated."),
+}
 
 
 def locality_name(slug: str) -> str:
@@ -21,7 +36,7 @@ def locality_name(slug: str) -> str:
     return slug
 
 
-def analysis_context(analysis, *, geography: dict | None = None, priority=None) -> dict:
+def analysis_context(analysis, *, geography: dict | None = None, priority=None, scenario: GuidanceScenario | None = None) -> dict:
     metrics = analysis.metrics
     provenance = metrics.provenance or {} if metrics else {}
     population = provenance.get("population") or {}
@@ -42,11 +57,15 @@ def analysis_context(analysis, *, geography: dict | None = None, priority=None) 
                          "components": [{"name": item.name, "contribution_points": item.contribution_points}
                                         for item in priority.components]} if priority else None)
     context = {"locality_id": analysis.zone_id, "mode": analysis.mode,
+            "scenario": scenario.model_dump(mode="json", exclude_none=True) if scenario else None,
             "hazards": [{"hazard": item.hazard, "status": item.status, "level": item.level,
                          "score": item.score, "score_unit": item.score_unit, "method": item.method,
-                         "valid_at": item.data_valid_at.isoformat() if item.data_valid_at else None,
-                         "forecast_horizon_hours": item.forecast_horizon_hours, "rules_version": item.rules_version,
-                         "factors": [{"name": factor.name, "value": factor.value, "unit": factor.unit, "source": factor.source}
+                         "valid_at": item.data_valid_at.isoformat() if item.data_valid_at and not scenario else None,
+                         "forecast_horizon_hours": None if scenario else item.forecast_horizon_hours, "rules_version": item.rules_version,
+                         "factors": [{"name": ({"Forecast 24-hour rainfall": "Hypothetical rainfall total",
+                                               "Peak hourly rainfall": "Hypothetical rain intensity"}.get(factor.name, factor.name)
+                                              if scenario and factor.source == "Hypothetical input" else factor.name),
+                                      "value": factor.value, "unit": factor.unit, "source": factor.source}
                                      for factor in item.factors[:4]], "warnings": item.warnings[:4], "sources": item.sources[:4]}
                         for item in analysis.assessments],
             "feature_availability": [item.model_dump() for item in analysis.feature_availability],
@@ -55,11 +74,14 @@ def analysis_context(analysis, *, geography: dict | None = None, priority=None) 
 
 
 def prompt_for(audience: str, name: str, context: dict) -> str:
-    task = ("Explain the selected Pune area in calm, citizen-friendly language and give three practical preparedness actions covering the available flood, heat and air-quality evidence."
+    task = ("Explain the selected Pune area in calm, citizen-friendly language and give three practical preparedness actions covering only the available hazard evidence."
             if audience == "citizen" else
-            "Give a concise authority response brief with four evidence-aware actions covering immediate preparedness, public communication, infrastructure review, and monitoring. Explain provisional priority factors without calling them dispatch orders. Do not issue or publish an alert.")
-    return ("You are CLIMAGUARD AI using only the attached deterministic live analysis. " + task + "\n"
-            "Return ONLY a JSON object with keys summary (string), risk_explanation (string), actions (array of strings), limitations (string). "
+            "Give a concise authority response brief with three evidence-aware actions that together cover immediate preparedness, public communication, infrastructure review, and monitoring. Explain provisional priority factors without calling them dispatch orders. Do not issue or publish an alert.")
+    grounding = ("You are generating preparedness recommendations for a hypothetical climate scenario. The input conditions are simulated for educational and demonstration purposes, not verified current weather or an official emergency. Provide practical, non-alarmist safety actions relevant to the simulated risk factors. Do not claim a real disaster is occurring, an evacuation has been ordered, or an authority has issued an alert. Use only the attached deterministic simulation analysis. "
+                 if context.get("mode") == "simulation" else "You are CLIMAGUARD AI using only the attached deterministic live analysis. ")
+    return (grounding + task + "\n"
+            "Return ONLY a JSON object with keys summary (string), risk_explanation (string), actions (array of exactly three complete unnumbered sentences), limitations (string). "
+            "Make summary and limitations complete sentences. Do not add markdown or prose outside the JSON object. "
             "Use no digits, percentages, measured quantities, or new environmental facts anywhere in the response. "
             "Use words like 'fine particles' instead of numbered pollutant names. Do not number the actions. "
             "Do not call the heuristic flood index a probability or the US AQI Indian AQI. "
@@ -98,13 +120,33 @@ class NugenGuidanceService:
             logging.getLogger("climaguard.nugen").warning("draft_persistence_failed type=%s", type(exc).__name__)
             return "failed"
 
-    async def generate(self, locality_id: str, audience: str) -> GuidanceResponse:
-        analysis = await self.analysis.zone(locality_id)
-        if analysis.mode != "live" or not any(item.status == "available" for item in analysis.assessments):
-            raise ServiceUnavailable("No live hazard analysis is available for Nugen guidance.")
-        geography = (await self.analysis.context_all()).get(locality_id, {}) if hasattr(self.analysis, "context_all") else {}
+    async def generate(self, locality_id: str, audience: str, request: GuidanceRequest | None = None) -> GuidanceResponse:
+        request = request or GuidanceRequest()
+        if coordinates_for(locality_id) is None:
+            raise HTTPException(404, "Unknown Pune analysis area.")
+        geography = {}
+        scenario = None
+        if request.mode == "simulation":
+            scenario = SCENARIOS[request.scenario_id]
+            # No environmental fetch, live measurements or Supabase writes in simulation.
+            geography = (await self.analysis.context_all()).get(locality_id, {})
+            now = datetime.now(timezone.utc)
+            unavailable = StreamError(detail="No current environmental values are used in simulation guidance.")
+            bundle = EnvironmentBundle(zone_id=locality_id, coordinate=coordinates_for(locality_id),
+                weather=unavailable, air_quality=unavailable, history=unavailable,
+                persistence="not_configured", retrieved_at=now)
+            inputs = ScenarioRequest(zone_id=locality_id,
+                rainfall_intensity_mm_h=scenario.rainfall_intensity_mm_h,
+                rainfall_duration_hours=scenario.rainfall_duration_hours or 6,
+                temperature_c=scenario.temperature_c, humidity_percent=scenario.humidity_percent)
+            analysis = assess_bundle(bundle, self.analysis.metrics_from_context(geography), scenario=inputs)
+        else:
+            analysis = await self.analysis.zone(locality_id)
+            geography = (await self.analysis.context_all()).get(locality_id, {}) if hasattr(self.analysis, "context_all") else {}
+        if not any(item.status == "available" for item in analysis.assessments):
+            raise NugenFailure("No supported hazard inputs are available for guidance.", "nugen_missing_context")
         priority = priority_result(analysis, geography) if audience == "authority" else None
-        context = analysis_context(analysis, geography=geography, priority=priority)
+        context = analysis_context(analysis, geography=geography, priority=priority, scenario=scenario)
         fingerprint = sha256(json.dumps(context, sort_keys=True, default=str).encode()).hexdigest()
         cache_key = f"{self.nugen.settings.nugen_model_id}:{audience}:{locality_id}:{fingerprint}"
         cached = self.cache.get(cache_key)
@@ -114,25 +156,34 @@ class NugenGuidanceService:
         prompt = prompt_for(audience, name, context)
         inference = await self.nugen.generate(prompt, allowed_numbers=set())
         guidance = inference.guidance
+        if scenario:
+            import re
+            unsafe = re.compile(r"\b(?:evacuat(?:e|ion) (?:now|immediately|has been ordered)|(?:official|authority) alert (?:has been )?issued|(?:flooding|a disaster) is (?:happening|occurring) (?:now|currently))\b", re.IGNORECASE)
+            if any(unsafe.search(value) for value in [guidance.summary, guidance.limitations, *guidance.actions]):
+                raise NugenFailure("Nugen described the hypothetical scenario as a real emergency; no advice was shown.", "nugen_safety_rejected")
         guidance.risk_explanation = " ".join(
-            f"{item['hazard'].replace('_', ' ').title()} screening is {item['level']} and considers "
+            f"{item['hazard'].replace('_', ' ').title()} {'simulated ' if scenario else ''}screening is {item['level']} and considers "
             f"{', '.join(factor['name'].replace('_', ' ') for factor in item['factors'][:3])}."
             for item in context["hazards"] if item["status"] == "available" and item["factors"]
-        ) or "Source data is insufficient to explain current hazard screening."
+        ) or "Source data is insufficient to explain hazard screening."
         # Keep hazard labels under deterministic control: provider prose can confuse
         # "high air-quality risk" with "high air quality" or misstate a rule band.
         levels = {item["hazard"]: item["level"] if item["status"] == "available" else "unavailable"
                   for item in context["hazards"]}
-        guidance.summary = (f"Current screening for {name}: {levels.get('flood', 'unavailable')} flood risk, "
+        guidance.summary = (f"{'Hypothetical scenario' if scenario else 'Current screening'} for {name}: {levels.get('flood', 'unavailable')} flood risk, "
                             f"{levels.get('heat', 'unavailable')} heat risk, and "
                             f"{levels.get('air_quality', 'unavailable')} air-quality risk. "
                             "Review the Nugen preparedness actions below.")
-        response = GuidanceResponse(audience=audience, locality_id=locality_id, locality_name=name,
+        response = GuidanceResponse(audience=audience, mode=request.mode,
+                                    scenario_id=scenario.id if scenario else None,
+                                    scenario_label=scenario.label if scenario else None,
+                                    locality_id=locality_id, locality_name=name,
                                     model_id=inference.model_id, provider_request_id=inference.provider_request_id,
                                     inferred_at=inference.inferred_at,
                                     guidance=guidance, source_analysis={**context, "inference": {"status": "success",
                                       "provider_request_id": inference.provider_request_id}}, persistence="not_configured",
-                                    disclaimer="Nugen-generated preparedness guidance from deterministic live analysis. Not an official alert, validated flood probability, or dispatch order.")
-        response.persistence = await self._persist(response, fingerprint)
+                                    disclaimer=("SIMULATION — NOT LIVE CONDITIONS. Hypothetical demonstration guidance, not an official alert or current environmental report."
+                                                if scenario else "Nugen-generated preparedness guidance from deterministic live analysis. Not an official alert, validated flood probability, or dispatch order."))
+        response.persistence = "not_stored_simulation" if scenario else await self._persist(response, fingerprint)
         self.cache[cache_key] = (response.inferred_at, response)
         return response

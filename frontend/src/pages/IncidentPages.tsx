@@ -23,6 +23,7 @@ export function IncidentForm() {
   const [contact, setContact] = useState('')
   const [image, setImage] = useState<File | null>(null)
   const [fileError, setFileError] = useState('')
+  const [descriptionError, setDescriptionError] = useState('')
   const [sent, setSent] = useState(false)
   const mutation = useMutation({ mutationFn: async () => {
     if (!session || !supabase) throw new Error('Sign in to submit a live report.')
@@ -39,7 +40,8 @@ export function IncidentForm() {
   }, onSuccess: () => { void client.invalidateQueries({ queryKey: ['incidents'] }); setSent(true); setDescription(''); setContact(''); setImage(null) } })
   const submit = (event: FormEvent) => {
     event.preventDefault(); setSent(false)
-    if (description.trim().length < 20) return
+    if (description.trim().length < 20) { setDescriptionError('Please describe what happened in at least 20 non-space characters.'); return }
+    setDescriptionError('')
     if (demo) {
       addDemoReport({ id: crypto.randomUUID(), localityId, category, severity, description: description.trim(), createdAt: new Date().toISOString(), status: 'submitted', contact: contact.trim() || null })
       setSent(true); setDescription(''); setContact(''); setImage(null)
@@ -49,11 +51,11 @@ export function IncidentForm() {
     <label>Selected area<input value={localityId} disabled/></label>
     <label>Type of incident<select value={category} onChange={event => setCategory(event.target.value as IncidentCategory)}><option value="flood">Flooding</option><option value="waterlogging">Waterlogging</option><option value="blocked_road">Blocked road</option><option value="fallen_tree">Fallen tree</option><option value="heat">Extreme heat concern</option><option value="air_quality">Air pollution concern</option><option value="other">Other environmental hazard</option></select></label>
     <label>Reporter severity<select value={severity} onChange={event => setSeverity(event.target.value as typeof severity)}><option value="low">Low</option><option value="moderate">Moderate</option><option value="high">High</option><option value="severe">Severe</option></select></label>
-    <label>What happened?<textarea required minLength={20} maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} placeholder="Describe what you observed and when, without sharing a home address."/><small>At least 20 characters. Reporter severity is unverified.</small></label>
+    <label>What happened? <span className="required-mark">required</span><textarea required minLength={20} maxLength={2000} aria-invalid={Boolean(descriptionError)} aria-describedby={descriptionError ? 'incident-description-error' : 'incident-description-help'} value={description} onChange={event => { setDescription(event.target.value); setDescriptionError('') }} placeholder="Describe what you observed and when, without sharing a home address."/><small id="incident-description-help">At least 20 characters. Reporter severity is unverified.</small></label>
     <label>Evidence image <span className="optional">optional</span><input type="file" accept="image/jpeg,image/png,image/webp" disabled={demo} onChange={event => { const file = event.target.files?.[0] ?? null; setFileError(file && (!imageTypes[file.type] || file.size > 5 * 1024 * 1024) ? 'Use a JPEG, PNG or WebP image no larger than 5 MB.' : ''); setImage(file) }}/><small>Private storage, maximum 5 MB. Available in live mode after migration 008.</small></label>
     <label>Contact information <span className="optional">optional</span><input value={contact} onChange={event => setContact(event.target.value)} maxLength={120}/></label>
     <Button type="submit" disabled={mutation.isPending || Boolean(fileError)}><Send size={16}/>{mutation.isPending ? 'Submitting…' : demo ? 'Save demo report' : 'Submit report'}</Button>
-    {fileError && <p className="form-error" role="alert">{fileError}</p>}{mutation.error && <p className="form-error" role="alert">{mutation.error.message}</p>}{sent && <p className="form-success" role="status"><CheckCircle2 size={17}/>{demo ? 'Demo report saved on this device.' : 'Report persisted as unverified. Track it in My Reports.'}</p>}
+    {descriptionError && <p id="incident-description-error" className="form-error" role="alert">{descriptionError}</p>}{fileError && <p className="form-error" role="alert">{fileError}</p>}{mutation.error && <p className="form-error" role="alert">{mutation.error.message}</p>}{sent && <p className="form-success" role="status"><CheckCircle2 size={17}/>{demo ? 'Demo report saved on this device.' : 'Report persisted as unverified. Track it in My Reports.'}</p>}
   </form></Panel><Panel className="aside-info"><span className="safety-icon"><ShieldCheck size={24}/></span><h2>What happens next?</h2><div className="step"><span>01</span><p>Your report is recorded as unverified.</p></div><div className="step"><span>02</span><p>An authorized team reviews the details and evidence.</p></div><div className="step"><span>03</span><p>Verification does not automatically create an official warning or flood training label.</p></div><p className="disclaimer">For an immediate emergency, contact local emergency services directly. This form is not a dispatch channel.</p></Panel></div></>
 }
 

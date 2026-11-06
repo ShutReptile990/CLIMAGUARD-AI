@@ -29,6 +29,7 @@ class AlertCreate(StrictModel):
     localityId: str = Field(min_length=2, max_length=80, pattern="^[a-z0-9-]+$")
     source: str = Field(min_length=3, max_length=300)
     hazard: str = Field(default="other", pattern="^(flood|heat|air_quality|other)$")
+    incidentId: UUID | None = None
 
 
 class AlertEdit(StrictModel):
@@ -66,3 +67,13 @@ class Alert(StrictModel):
     expiresAt: datetime | None = None
     createdBy: UUID | None = None
     approvedBy: UUID | None = None
+    incidentId: UUID | None = None
+
+
+class AlertHistoryEntry(StrictModel):
+    actorId: UUID | None
+    createdAt: datetime
+    action: str
+    oldStatus: str | None = None
+    newStatus: str | None = None
+    changedFields: list[str] = Field(default_factory=list)

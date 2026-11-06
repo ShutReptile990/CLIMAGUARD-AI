@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import httpx
 import pytest
-from app.core.errors import ServiceUnavailable
+from app.core.errors import ServiceUnavailable, UpstreamError
 from app.integrations.supabase import get_gateway
 from app.main import app
 from scripts.import_pune_infrastructure import import_database, parse_geojson
@@ -101,5 +101,47 @@ def test_map_api_uses_validated_local_preview_when_database_unconfigured():
         assert facilities.json()["counts"]["hospital"] > 0
         assert roads.json()["features"][0]["geometry"]["type"] == "LineString"
         assert invalid.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_map_api_keeps_empty_imported_viewport_in_postgis():
+    class ImportedDatabase:
+        async def request(self, *_args, **_kwargs):
+            return []
+
+        async def table(self, table, **_kwargs):
+            assert table == "osm_import_runs"
+            return [{"id": "DEMO-import-run"}]
+
+    app.dependency_overrides[get_gateway] = lambda: ImportedDatabase()
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            return await client.get("/api/map/infrastructure")
+    try:
+        response = asyncio.run(run())
+        assert response.status_code == 200
+        assert response.json()["storage"] == "postgis"
+        assert response.json()["features"] == []
+        assert response.json()["total_count"] == 0
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_map_api_does_not_label_provider_failure_as_postgis_or_preview():
+    class FailedDatabase:
+        async def request(self, *_args, **_kwargs):
+            raise UpstreamError("DEMO provider outage")
+
+    app.dependency_overrides[get_gateway] = lambda: FailedDatabase()
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            return await client.get("/api/map/roads")
+    try:
+        response = asyncio.run(run())
+        assert response.status_code == 200
+        assert response.json()["status"] == "unavailable"
+        assert response.json()["storage"] == "none"
+        assert response.json()["features"] == []
     finally:
         app.dependency_overrides.clear()

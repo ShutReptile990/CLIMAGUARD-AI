@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
 export const useSnapshot = (localityId: string, enabled: boolean) => useQuery({ queryKey: ['snapshot', localityId], queryFn: () => api.snapshot(localityId), enabled, retry: 1, staleTime: 60_000 })
 export const useIncidents = (enabled: boolean) => useQuery({ queryKey: ['incidents'], queryFn: api.incidents, enabled, retry: 1 })
-export const useAlerts = (enabled = true, localityId?: string) => useQuery({ queryKey: ['alerts', localityId ?? 'all'], queryFn: () => api.alerts(localityId), enabled, retry: 1, refetchInterval: enabled ? 60_000 : false })
+export const useAlerts = (enabled = true, localityId?: string) => useQuery({ queryKey: ['alerts', localityId ?? 'all'], queryFn: () => api.alerts(localityId === 'pune' ? undefined : localityId), enabled, retry: 1, refetchInterval: enabled ? 30_000 : false, refetchOnWindowFocus: true })
 export const useDrafts = (enabled: boolean) => useQuery({ queryKey: ['alert-drafts'], queryFn: api.drafts, enabled, retry: 1 })
 export const useEnvironment = (localityId: string, enabled: boolean) => useQuery({ queryKey: ['environment', localityId], queryFn: () => api.environment(localityId), enabled, retry: 1, staleTime: 10 * 60_000 })
 export const useZonesGeojson = () => useQuery({ queryKey: ['zones-geojson'], queryFn: api.zonesGeojson, retry: 1, staleTime: 24 * 60 * 60_000 })

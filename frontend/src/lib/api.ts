@@ -1,4 +1,4 @@
-import type { AnalysisResponse, ComparisonResponse, EnvironmentBundle, ExposureResponse, Incident, MapScreening, MappedFacility, MappedResponse, MappedRoad, NugenGuidance, NugenStatus, ScenarioRequest, SimulationResponse, Snapshot, ZoneCollection } from '../types'
+import type { AnalysisResponse, ComparisonResponse, EnvironmentBundle, ExposureResponse, Incident, MapScreening, MappedFacility, MappedResponse, MappedRoad, NugenGuidance, NugenScenario, NugenScenarioId, NugenStatus, ScenarioRequest, SimulationResponse, Snapshot, ZoneCollection } from '../types'
 import type { Profile } from '../auth'
 import { supabase } from './supabase'
 const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '').replace(/\/api(?:\/v1)?$/, '')
@@ -43,7 +43,8 @@ export const api = {
   exposure: (zoneId: string) => request<ExposureResponse>(`/analysis/${encodeURIComponent(zoneId)}/exposure`),
   simulate: (scenario: ScenarioRequest) => request<SimulationResponse>('/analysis/simulate', { method: 'POST', body: JSON.stringify(scenario) }),
   nugenStatus: () => request<NugenStatus>('/nugen/status'),
-  nugenGuidance: (localityId: string, audience: 'citizen' | 'authority') => request<NugenGuidance>(`/nugen/${audience}/${encodeURIComponent(localityId)}`, { method: 'POST' }),
+  nugenScenarios: () => request<NugenScenario[]>('/nugen/scenarios'),
+  nugenGuidance: (localityId: string, audience: 'citizen' | 'authority', body?: { mode: 'live' } | { mode: 'simulation'; scenario_id: NugenScenarioId }) => request<NugenGuidance>(`/nugen/${audience}/${encodeURIComponent(localityId)}`, { method: 'POST', ...(body && { body: JSON.stringify(body) }) }),
   submitIncident: (incident: Omit<Incident, 'id' | 'createdAt' | 'status'>) => request<Incident>('/incidents', { method: 'POST', body: JSON.stringify(incident) }),
   incidents: () => request<Incident[]>('/incidents'),
   incidentHistory: (id: string) => request<import('../types').IncidentHistoryEntry[]>(`/incidents/${encodeURIComponent(id)}/history`),
@@ -51,8 +52,10 @@ export const api = {
   alerts: (localityId?: string) => request<import('../types').PublicAlert[]>(`/alerts${localityId ? `?locality_id=${encodeURIComponent(localityId)}` : ''}`),
   drafts: () => request<import('../types').PublicAlert[]>('/alerts/drafts'),
   alertArchive: () => request<import('../types').PublicAlert[]>('/alerts/archive'),
-  createAlert: (alert: { title: string; body: string; level: string; localityId: string; source: string; hazard: string }) => request<import('../types').PublicAlert>('/alerts', { method: 'POST', body: JSON.stringify(alert) }),
+  createAlert: (alert: { title: string; body: string; level: string; localityId: string; source: string; hazard: string; incidentId?: string | null }) => request<import('../types').PublicAlert>('/alerts', { method: 'POST', body: JSON.stringify(alert) }),
   editAlert: (id: string, alert: { title: string; body: string; level: string; source: string; hazard: string }) => request<import('../types').PublicAlert>(`/alerts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(alert) }),
+  editPublishedAlert: (id: string, alert: { title: string; body: string; level: string; source: string; hazard: string }) => request<import('../types').PublicAlert>(`/alerts/${encodeURIComponent(id)}/published`, { method: 'PATCH', body: JSON.stringify(alert) }),
+  alertHistory: (id: string) => request<import('../types').AlertHistoryEntry[]>(`/alerts/${encodeURIComponent(id)}/history`),
   submitAlert: (id: string) => request<import('../types').PublicAlert>(`/alerts/${encodeURIComponent(id)}/submit`, { method: 'POST' }),
   reviewAlert: (id: string, approve: boolean, reason?: string) => request<import('../types').PublicAlert>(`/alerts/${encodeURIComponent(id)}/review`, { method: 'POST', body: JSON.stringify({ approve, reason }) }),
   publishAlert: (id: string, expires_at: string) => request<import('../types').PublicAlert>(`/alerts/${encodeURIComponent(id)}/publish`, { method: 'POST', body: JSON.stringify({ expires_at }) }),

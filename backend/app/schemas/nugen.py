@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal
 import re
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 
 NUMERIC_CLAIM = re.compile(r"(?<![A-Za-z\d])\d+(?:\.\d+)?")
@@ -50,8 +50,10 @@ class NugenGuidanceText(BaseModel):
     @classmethod
     def validate_actions(cls, values: list[str], info: ValidationInfo) -> list[str]:
         allowed = (info.context or {}).get("allowed_numbers", set())
-        if any(not 12 <= len(value.strip()) <= 400 or unsupported_number(value, allowed) for value in values):
+        if any(unsupported_number(value, allowed) for value in values):
             raise ValueError("Nugen actions contain an unsupported numerical claim")
+        if any(not 12 <= len(value.strip()) <= 400 for value in values):
+            raise ValueError("Nugen action length is outside the allowed range")
         return [value.strip() for value in values]
 
 
@@ -126,7 +128,8 @@ class NugenFeatureInput(BaseModel):
 
 class NugenAnalysisContext(BaseModel):
     locality_id: str
-    mode: Literal["live"]
+    mode: Literal["live", "simulation"]
+    scenario: dict | None = None
     hazards: list[NugenHazardInput] = Field(min_length=3, max_length=3)
     feature_availability: list[NugenFeatureInput]
     metrics: NugenMetricInput | None = None
@@ -142,8 +145,36 @@ class NugenStatus(BaseModel):
     detail: str
 
 
+ScenarioId = Literal["extreme_rainfall", "severe_heat", "combined_stress"]
+
+
+class GuidanceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["live", "simulation"] = "live"
+    scenario_id: ScenarioId | None = None
+
+    @model_validator(mode="after")
+    def validate_mode(self):
+        if (self.mode == "simulation") != (self.scenario_id is not None):
+            raise ValueError("A scenario ID is required only for simulation guidance")
+        return self
+
+
+class GuidanceScenario(BaseModel):
+    id: ScenarioId
+    label: str
+    rainfall_intensity_mm_h: float | None = None
+    rainfall_duration_hours: int | None = None
+    temperature_c: float | None = None
+    humidity_percent: float | None = None
+    limitation: str
+
+
 class GuidanceResponse(BaseModel):
     status: Literal["available"] = "available"
+    mode: Literal["live", "simulation"] = "live"
+    scenario_id: ScenarioId | None = None
+    scenario_label: str | None = None
     audience: Literal["citizen", "authority"]
     locality_id: str
     locality_name: str
@@ -152,6 +183,6 @@ class GuidanceResponse(BaseModel):
     inferred_at: datetime
     guidance: NugenGuidanceText
     source_analysis: dict
-    persistence: Literal["stored", "failed", "not_configured"]
+    persistence: Literal["stored", "failed", "not_configured", "not_stored_simulation"]
     cache_hit: bool = False
     disclaimer: str

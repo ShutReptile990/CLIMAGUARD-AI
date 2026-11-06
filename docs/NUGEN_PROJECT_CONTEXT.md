@@ -13,9 +13,9 @@ The application is intended to support awareness and review. It does **not** iss
 
 ## 2. Existing implementation
 
-- **Frontend:** React, TypeScript, Vite, React Router, TanStack Query, React Leaflet, and Recharts. It has a premium, minimal citizen and authority interface, responsive Pune map, analysis cards, comparison rankings, a what-if simulator, incident screens, alerts, and loading/empty/error states. It starts in explicitly labeled **DEMO** mode; live mode uses the FastAPI service.
+- **Frontend:** React, TypeScript, Vite, React Router, TanStack Query, React Leaflet, and Recharts. It has citizen and authority views, a Pune map, analysis cards, comparison rankings, a what-if simulator, incident screens, alerts, and loading/empty/error states. With Supabase browser configuration present it starts in live mode; the explicit **DEMO** toggle uses illustrative data.
 - **Backend:** FastAPI with modular API, schemas, services, repositories, and integrations. Pydantic validates requests and responses. It provides CORS, structured logging, health checks, timeout/retry handling, and centralized errors.
-- **Database:** Supabase PostgreSQL with PostGIS. Migrations 001–007 define profiles, zones, environmental records, predictions, explanations, infrastructure, roads, waterways, incident reports, alerts, audit logs, sourced zone metrics, private verified flood labels, and Nugen draft metadata. Row Level Security restricts access. The current project is reachable; migrations 004 and 007 are detectable, while 005–006 are absent. WorldPop zone metrics and environmental observations are persisted. Nugen draft persistence has not been retested in this audit.
+- **Database:** Supabase PostgreSQL with PostGIS. Migrations 001–008 are applied and the project owner reports 009 and 010 applied. A read-only probe confirmed migration 010's new column, while live self-approval is pending. They define profiles, zones, environmental records, infrastructure, waterways, incident reports, alerts, audit logs, sourced metrics and Nugen draft metadata. Row Level Security restricts access. WorldPop, slope, mapped-drain metrics and 213 OSM waterways are persisted. The 1 November 2026 Nugen smoke test stored a new unapproved recommendation draft.
 - **Authentication:** Supabase Auth. Roles are `citizen`, `authority`, and `admin`. New accounts are citizens. FastAPI verifies bearer tokens and reads roles from database profiles. Citizens manage their reports; authorities review reports and manage official alerts; admins assign roles. A user cannot grant themselves authority or admin access. Browser code uses publishable credentials; privileged keys remain server-side.
 - **Nugen status:** Deployed aligned inference is connected server-side through FastAPI. Citizen and authority guidance use current deterministic analysis, with response validation and explicit unavailable states. The authority route checks the database role. No other LLM provider is used. The existing recommendation API still returns only approved stored recommendations.
 
@@ -23,7 +23,7 @@ The application is intended to support awareness and review. It does **not** iss
 
 The current pilot is a deterministic 3×3 Pune grid, `pune-core-grid-v1`, covering approximately 18.45–18.60° N and 73.77–73.96° E. Each cell has a stable ID, polygon, centroid, and source metadata. Cells are **not official municipal wards**. Map colors are screening bins, **not physical flood extents**. Clicking a cell selects the corresponding dashboard context.
 
-The map can show OpenStreetMap hospitals, schools, fire stations, and major roads with layer toggles and source links. Their records are mapped, not independently verified emergency facilities. Supplied OSM GeoJSON is validated and can appear as a clearly labeled local preview. No infrastructure or waterways have been imported to PostGIS in this workspace.
+The map can show OpenStreetMap hospitals, schools, fire stations, and major roads with layer toggles and source links. Their records are mapped, not independently verified emergency facilities. The facility/road GeoJSON remains a clearly labeled local preview; no `osm_import_runs` record exists. The 213 OSM waterways are in PostGIS.
 
 ## 4. Data sources and present coverage
 
@@ -34,8 +34,8 @@ The map can show OpenStreetMap hospitals, schools, fire stations, and major road
 | Open-Meteo Air Quality API | US AQI, PM2.5, PM10 and supported gases | Connected. Pollutants carry units/timestamps. **US AQI must never be called Indian AQI.** |
 | WorldPop Global2 API v2 | Population within the nine analysis polygons | A 2025, 100 m request succeeded for 9/9 cells, is cached locally, and all nine validated estimates are persisted in Supabase. This is modeled population **in a cell**, not flood-exposed population. |
 | OpenStreetMap infrastructure GeoJSON | Mapped facilities and roads | Validated: 1,030 named facility candidates and 5,438 major-road candidates; 74 source records rejected, with reasons in the validation report. Local preview available; PostGIS import pending. |
-| OpenStreetMap waterways GeoJSON | Rivers, streams, canals, drains, ditches, culvert tags | Validated: 213/213 lines; mapped waterway/drain proximity for 9/9 cells; 46 culvert-tagged lines. **No capacity, condition, or effectiveness is known.** PostGIS import pending. |
-| Copernicus DEM | Elevation and slope | **Unavailable.** `data/raw/pune_elevation.tif` currently contains a text request URL, not a GeoTIFF. Elevation/slope coverage is 0/9. |
+| OpenStreetMap waterways GeoJSON | Rivers, streams, canals, drains, ditches, culvert tags | Validated and persisted: 213/213 lines; mapped drain proximity for 9/9 cells. **No capacity, condition, or effectiveness is known.** |
+| Copernicus DEM | Elevation and slope | A valid GeoTIFF and supplied source metadata produced persisted mean slope for 9/9 cells. A slope statistic is not a flood-depth prediction. |
 | Local population raster | Raster-based population coverage | **Unavailable.** `data/raw/pune_population.tif` currently contains GeoJSON, not a GeoTIFF. WorldPop API estimates are the available population source. |
 | Verified historical flood events | Historical exposure and supervised training labels | **Unavailable.** Zero verified positive and zero verified negative labels. Citizen incident reports are not training labels. |
 | Municipal drainage or validated hazard footprints | Hydraulic capacity, inundation/exposure assessment | **Unavailable.** Import formats exist, but no authoritative dataset or validated hazard geometry has been supplied. |
@@ -82,11 +82,11 @@ Use the actual typed FastAPI schemas and OpenAPI document for implementation det
 
 ## 7. Nugen alignment instructions
 
-The following behavior brief describes how to ground Nugen guidance. The FastAPI integration uses the verified request shape in `backend/test_nugen.py`.
+The following behavior brief describes how to ground Nugen guidance. The FastAPI integration uses the deployed chat-completions request shape verified by `backend/scripts/smoke_nugen.py`.
 
 > You are the CLIMAGUARD AI explanation and preparedness assistant for the Pune pilot. Use only current, explicitly supplied application data. Identify each value as observed, model-estimated, historical reanalysis, mapped, heuristic, simulated, or unavailable. Include zone name, source, timestamp, units, forecast horizon, and missing-data limitations when relevant. Explain the documented flood, heat, US AQI, geographic co-location, and priority rules in plain language. Give cautious, general preparedness actions and direct users to current official authority advisories for urgent decisions. Never invent a sensor reading, facility, flood extent, verified incident, model metric, probability, SHAP contribution, municipal boundary, or official warning. Never convert US AQI to Indian AQI by relabeling. Never treat a citizen report as a verified training label. Do not claim that mapped drains work or that intersecting assets are damaged. Treat SIMULATION MODE inputs as hypothetical. If the needed evidence is missing or stale, say what is unavailable and why. Do not publish an alert, approve a recommendation, assign a role, or claim authority review occurred; those actions require the existing authenticated backend workflow.
 
-**Implemented boundary:** FastAPI sends source-attributed live analysis for the selected locality to Nugen server-side, validates its response and prepares a draft with model ID, inference time and source-analysis JSON. The app displays generated actions as AI guidance; official alerts still require the existing independent authority approval. Migration 007 is detectable in the current database; recommendation draft persistence was not retested in this audit. Nugen and privileged database credentials stay server-side.
+**Implemented boundary:** FastAPI sends source-attributed live analysis for the selected locality to Nugen server-side, validates its response and stores an unapproved draft with model ID, inference time and source-analysis JSON. The 1 November 2026 B2 smoke test returned HTTP 200 and Supabase stored the draft. Official alerts require explicit authenticated authority approval and publication; migration 010 permits one authority to perform both. Nugen and privileged database credentials stay server-side.
 
 ## 8. Truthfulness and privacy rules for generated text
 
@@ -108,4 +108,4 @@ The following behavior brief describes how to ground Nugen guidance. The FastAPI
 - [Risk methods and evidence](../ml/README.md)
 - [Dataset training audit](../ml/dataset_audit.json)
 
-**Last checked against repository:** 29 October 2026. This file is a project handoff, not a live status endpoint.
+**Last checked against repository:** 1 November 2026. This file is a project handoff, not a live status endpoint.

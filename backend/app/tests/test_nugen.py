@@ -2,6 +2,7 @@
 
 import json
 import asyncio
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -10,13 +11,12 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.config import Settings
-from app.core.errors import ServiceUnavailable
+from app.core.errors import NugenFailure, ServiceUnavailable
 from app.integrations.nugen import NugenClient
 from app.integrations.supabase import SupabaseGateway
-from app.schemas.nugen import NugenGuidanceText, NugenInference
-from datetime import datetime, timezone
+from app.schemas.nugen import GuidanceRequest, NugenGuidanceText, NugenInference
 from app.services.analysis import assess_bundle
-from app.services.nugen_guidance import NugenGuidanceService, analysis_context, prompt_for
+from app.services.nugen_guidance import NugenGuidanceService, SCENARIOS, analysis_context, prompt_for
 from app.tests.test_analysis import demo_bundle, demo_weather, demo_air
 
 
@@ -62,6 +62,58 @@ def test_nugen_client_rejects_unsupported_measurements():
             with pytest.raises(ServiceUnavailable):
                 await NugenClient(settings(), transport).generate("DEMO prompt", allowed_numbers={"25"})
     asyncio.run(run())
+
+
+def test_nugen_retries_rejected_guidance_with_same_model():
+    calls = []
+    unsafe = provider_response()
+    content = json.loads(unsafe["choices"][0]["message"]["content"])
+    content["actions"][0] = "Expect 999 millimeters of rain and follow verified local guidance."
+    unsafe["choices"][0]["message"]["content"] = json.dumps(content)
+
+    def handler(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(200, json=unsafe if len(calls) == 1 else provider_response())
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as transport:
+            result = await NugenClient(settings(), transport).generate("DEMO prompt", allowed_numbers=set())
+            assert len(result.guidance.actions) == 2
+    asyncio.run(run())
+    assert len(calls) == 2 and all(call["model"] == "DEMO-model" for call in calls)
+    assert "999" not in json.dumps(calls[1])
+
+
+def test_nugen_rejects_unsafe_guidance_after_one_retry():
+    calls = []
+    unsafe = provider_response()
+    content = json.loads(unsafe["choices"][0]["message"]["content"])
+    content["actions"][0] = "Expect 999 millimeters of rain and follow verified local guidance."
+    unsafe["choices"][0]["message"]["content"] = json.dumps(content)
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200, json=unsafe)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as transport:
+            with pytest.raises(NugenFailure) as failure:
+                await NugenClient(settings(), transport).generate("DEMO prompt", allowed_numbers=set())
+            assert failure.value.code == "nugen_safety_rejected" and failure.value.http_status == 503
+    asyncio.run(run())
+    assert len(calls) == 2
+
+
+def test_nugen_distinguishes_provider_auth_and_invalid_json():
+    async def run(response, code, status):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: response)) as transport:
+            with pytest.raises(NugenFailure) as failure:
+                await NugenClient(settings(), transport).generate("DEMO prompt", allowed_numbers=set())
+            assert failure.value.code == code and failure.value.http_status == status
+    asyncio.run(run(httpx.Response(401, json={"detail": "rejected"}), "nugen_auth", 503))
+    asyncio.run(run(httpx.Response(200, json={"model": "DEMO-model", "choices": [
+        {"finish_reason": "stop", "message": {"content": "This is not guidance JSON at all."}}]}),
+        "nugen_invalid_response", 502))
 
 
 def test_optional_explanation_with_numeric_claim_is_replaced_safely():
@@ -155,14 +207,119 @@ def test_authority_route_rejects_unauthenticated_request():
     from app.main import app
 
     async def run():
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post("/api/nugen/authority/pune-grid-r2-c2")
-            assert response.status_code == 401
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                response = await client.post("/api/nugen/authority/pune-grid-r2-c2")
+                assert response.status_code == 401
     asyncio.run(run())
 
 
-def test_ai_alert_draft_requires_distinct_authority_reviewer():
-    from fastapi import HTTPException
+def test_simulation_contract_rejects_invalid_modes_and_scenarios():
+    for payload in ({"mode": "simulation"}, {"mode": "live", "scenario_id": "severe_heat"},
+                    {"mode": "simulation", "scenario_id": "poor_air_quality"},
+                    {"mode": "simulation", "scenario_id": "extreme_rainfall", "rainfall_intensity_mm_h": 999}):
+        with pytest.raises(ValidationError):
+            GuidanceRequest.model_validate(payload)
+    assert SCENARIOS["extreme_rainfall"].rainfall_intensity_mm_h == 40
+    assert "air" in SCENARIOS["combined_stress"].limitation
+
+
+def test_simulated_guidance_recalculates_without_live_environment_or_database_writes():
+    calls = []
+
+    class Analysis:
+        async def zone(self, _):
+            raise AssertionError("simulation must not request live analysis")
+
+        async def context_all(self):
+            return {}
+
+        @staticmethod
+        def metrics_from_context(_):
+            return None
+
+    class Nugen:
+        settings = SimpleNamespace(nugen_model_id="DEMO-model")
+
+        async def generate(self, prompt, *, allowed_numbers):
+            assert "hypothetical climate scenario" in prompt and allowed_numbers == set()
+            calls.append(prompt)
+            text = json.loads(provider_response()["choices"][0]["message"]["content"])
+            return NugenInference(guidance=NugenGuidanceText.model_validate(text), model_id="DEMO-model",
+                                  provider_request_id="DEMO-request", inferred_at=datetime.now(timezone.utc))
+
+    class NoDatabase:
+        def __getattr__(self, name):
+            raise AssertionError(f"simulation touched database: {name}")
+
+    async def run():
+        service = NugenGuidanceService(Nugen(), Analysis(), NoDatabase())
+        rain = await service.generate("pune-grid-r2-c2", "citizen", GuidanceRequest(mode="simulation", scenario_id="extreme_rainfall"))
+        assert rain.mode == "simulation" and rain.persistence == "not_stored_simulation"
+        assert rain.source_analysis["mode"] == "simulation" and rain.source_analysis["scenario"]["id"] == "extreme_rainfall"
+        assert rain.source_analysis["hazards"][0]["status"] == "available"
+        assert rain.source_analysis["hazards"][1]["status"] == "unavailable"
+        assert rain.source_analysis["hazards"][2]["status"] == "unavailable"
+        assert rain.source_analysis["hazards"][0].get("valid_at") is None
+        assert "Hypothetical scenario" in rain.guidance.summary
+        cached = await service.generate("pune-grid-r2-c2", "citizen", GuidanceRequest(mode="simulation", scenario_id="extreme_rainfall"))
+        assert cached.cache_hit and len(calls) == 1
+        heat = await service.generate("pune-grid-r2-c2", "citizen", GuidanceRequest(mode="simulation", scenario_id="severe_heat"))
+        assert heat.source_analysis["hazards"][0]["status"] == "unavailable"
+        assert heat.source_analysis["hazards"][1]["status"] == "available"
+        assert heat.source_analysis["hazards"][2]["status"] == "unavailable"
+        assert len(calls) == 2
+        combined = await service.generate("pune-grid-r2-c2", "citizen", GuidanceRequest(mode="simulation", scenario_id="combined_stress"))
+        assert combined.source_analysis["hazards"][0]["status"] == "available"
+        assert combined.source_analysis["hazards"][1]["status"] == "available"
+        assert combined.source_analysis["hazards"][2]["status"] == "unavailable"
+        assert len(calls) == 3
+    asyncio.run(run())
+
+
+def test_simulated_guidance_rejects_claim_of_real_emergency():
+    class Analysis:
+        async def context_all(self):
+            return {}
+
+        @staticmethod
+        def metrics_from_context(_):
+            return None
+
+    class Nugen:
+        settings = SimpleNamespace(nugen_model_id="DEMO-model")
+
+        async def generate(self, *_args, **_kwargs):
+            text = NugenGuidanceText.model_validate(json.loads(provider_response()["choices"][0]["message"]["content"]))
+            text.actions[0] = "Evacuate immediately because the authorities have issued an alert."
+            return NugenInference(guidance=text, model_id="DEMO-model", inferred_at=datetime.now(timezone.utc))
+
+    async def run():
+        with pytest.raises(NugenFailure) as failure:
+            await NugenGuidanceService(Nugen(), Analysis(), object()).generate(
+                "pune", "citizen", GuidanceRequest(mode="simulation", scenario_id="extreme_rainfall"))
+        assert failure.value.code == "nugen_safety_rejected"
+    asyncio.run(run())
+
+
+def test_simulation_endpoint_validates_body_and_authority_role():
+    from app.main import app
+
+    async def run():
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+                scenarios = await client.get("/api/v1/nugen/scenarios")
+                assert scenarios.status_code == 200 and len(scenarios.json()) == 3
+                invalid = await client.post("/api/v1/nugen/citizen/pune", json={"mode": "simulation", "scenario_id": "poor_air_quality"})
+                assert invalid.status_code == 422
+                legacy_body = await client.post("/api/v1/nugen/citizen/not-a-pune-area")
+                assert legacy_body.status_code == 404  # Omitting the body still reaches the service as live mode.
+                denied = await client.post("/api/v1/nugen/authority/pune", json={"mode": "simulation", "scenario_id": "extreme_rainfall"})
+                assert denied.status_code == 401
+    asyncio.run(run())
+
+
+def test_ai_alert_draft_can_be_approved_by_its_author_after_migration():
     from app.api.alerts import review_alert
     from app.schemas.alerts import AlertReview
     from app.core.auth import Principal
@@ -170,13 +327,21 @@ def test_ai_alert_draft_requires_distinct_authority_reviewer():
     author = uuid4()
     class Database:
         async def table(self, table, method="GET", **kwargs):
-            assert table == "alerts" and method == "GET"
-            return [{"id": str(uuid4()), "status": "pending_approval", "created_by": str(author)}]
+            assert table == "alerts"
+            if method == "GET" and kwargs["params"].get("limit") == 0:
+                return [{"incident_id": None}]
+            if method == "GET":
+                return [{"id": str(uuid4()), "status": "pending_approval", "created_by": str(author)}]
+            assert method == "PATCH" and kwargs["json"]["status"] == "approved"
+            return [{"id": str(uuid4()), "title": "TEST advisory", "body": "Check local official updates before travel today.",
+                     "level": "moderate", "locality_id": "pune-grid-r2-c2", "source": "Nugen draft and live analysis",
+                     "status": "approved", "approved_at": kwargs["json"]["approved_at"],
+                     "approved_by": kwargs["json"]["approved_by"],
+                     "created_at": datetime.now(timezone.utc).isoformat()}]
 
     async def run():
-        with pytest.raises(HTTPException) as error:
-            await review_alert(uuid4(), AlertReview(approve=True), Principal(id=author, role="authority", token="DEMO-token"), Database())
-        assert error.value.status_code == 403
+        result = await review_alert(uuid4(), AlertReview(approve=True), Principal(id=author, role="authority", token="DEMO-token"), Database())
+        assert result.status == "approved" and result.approvedBy == author
     asyncio.run(run())
 
 

@@ -9,6 +9,15 @@ class ServiceUnavailable(Exception):
         self.detail = detail
 
 
+class NugenFailure(ServiceUnavailable):
+    """A safe, categorized provider failure for the guidance API."""
+
+    def __init__(self, detail: str, code: str, http_status: int = 503):
+        super().__init__(detail)
+        self.code = code
+        self.http_status = http_status
+
+
 class UpstreamError(Exception):
     pass
 
@@ -25,7 +34,10 @@ class SupabaseRequestError(UpstreamError):
 def install_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ServiceUnavailable)
     async def unavailable(_: Request, exc: ServiceUnavailable):
-        return JSONResponse(status_code=503, content={"detail": exc.detail, "status": "unavailable"})
+        content = {"detail": exc.detail, "status": "unavailable"}
+        if isinstance(exc, NugenFailure):
+            content["code"] = exc.code
+        return JSONResponse(status_code=exc.http_status if isinstance(exc, NugenFailure) else 503, content=content)
 
     @app.exception_handler(UpstreamError)
     async def upstream(_: Request, exc: UpstreamError):

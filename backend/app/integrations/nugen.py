@@ -8,7 +8,7 @@ import re
 import httpx
 from pydantic import ValidationError
 from app.core.config import Settings
-from app.core.errors import ServiceUnavailable, UpstreamError
+from app.core.errors import NugenFailure
 from app.schemas.nugen import NugenChatResponse, NugenGuidanceText, NugenInference, NugenStatus, unsupported_number
 
 
@@ -36,18 +36,24 @@ class NugenClient:
 
     async def generate(self, prompt: str, *, allowed_numbers: set[str]) -> NugenInference:
         if not self.configured:
-            raise ServiceUnavailable("Nugen inference is not configured.")
+            raise NugenFailure("Nugen guidance is not configured.", "nugen_not_configured")
         if not prompt.strip() or len(prompt) > 12000:
             raise ValueError("Nugen prompt must be nonempty and at most 12000 characters")
         payload = {"model": self.settings.nugen_model_id, "messages": [{"role": "user", "content": prompt}],
                    "temperature": 0.2, "max_tokens": 400, "prompt_truncate_len": 3000, "stream": False}
         headers = {"Authorization": f"Bearer {self.settings.nugen_api_key}", "Content-Type": "application/json"}
+        validation_failures = 0
         for attempt in range(3):
             try:
                 response = await self.client.post(self.settings.nugen_inference_url, headers=headers, json=payload)
-            except (httpx.TimeoutException, httpx.TransportError) as exc:
+            except httpx.TimeoutException as exc:
                 if attempt == 2:
-                    raise UpstreamError("Nugen inference network failure") from exc
+                    raise NugenFailure("Nugen took too long to respond. Retry shortly.", "nugen_timeout", 504) from exc
+                await asyncio.sleep(0.5 * 2**attempt)
+                continue
+            except httpx.TransportError as exc:
+                if attempt == 2:
+                    raise NugenFailure("Nugen could not be reached. Retry shortly.", "nugen_network") from exc
                 await asyncio.sleep(0.5 * 2**attempt)
                 continue
             if response.status_code in (429, 500, 502, 503, 504) and attempt < 2:
@@ -57,11 +63,21 @@ class NugenClient:
                 continue
             if response.status_code >= 400:
                 logging.getLogger("climaguard.nugen").warning("nugen_status=%s", response.status_code)
-                raise ServiceUnavailable("Nugen is rate-limited or unavailable." if response.status_code == 429 else "Nugen inference failed.")
+                if response.status_code in (401, 403):
+                    raise NugenFailure("Nugen rejected the server credentials. Contact the application operator.", "nugen_auth")
+                if response.status_code == 429:
+                    raise NugenFailure("Nugen is rate-limited. Retry shortly.", "nugen_rate_limited")
+                if response.status_code in (500, 502, 503, 504):
+                    raise NugenFailure("Nugen is temporarily unavailable. Retry shortly.", "nugen_provider_unavailable")
+                raise NugenFailure("Nugen rejected the inference request. Contact the application operator.", "nugen_request_rejected", 502)
+            finish_reason = None
             try:
                 provider = NugenChatResponse.model_validate(response.json())
-                if provider.model != self.settings.nugen_model_id or provider.choices[0].finish_reason == "length":
-                    raise ValueError("Nugen response model mismatch or truncated completion")
+                finish_reason = provider.choices[0].finish_reason
+                if provider.model != self.settings.nugen_model_id:
+                    raise NugenFailure("Nugen returned a different model than configured.", "nugen_model_mismatch", 502)
+                if finish_reason == "length":
+                    raise NugenFailure("Nugen stopped before completing guidance. Retry shortly.", "nugen_truncated", 502)
                 content = provider.choices[0].message.content.strip()
                 if content.startswith("```"):
                     content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.IGNORECASE).strip()
@@ -73,9 +89,23 @@ class NugenClient:
                 guidance = NugenGuidanceText.model_validate(parsed, context={"allowed_numbers": allowed_numbers})
             except (ValueError, TypeError, KeyError, ValidationError) as exc:
                 fields = [(tuple(error.get("loc", ())), error.get("type")) for error in exc.errors()] if isinstance(exc, ValidationError) else []
-                logging.getLogger("climaguard.nugen").warning("invalid_nugen_response type=%s fields=%s", type(exc).__name__, fields)
-                raise ServiceUnavailable("Nugen returned guidance that could not be safely validated.") from exc
+                safety_rejected = isinstance(exc, ValidationError) and any(
+                    "unsupported numerical claim" in str(error.get("ctx", {}).get("error", ""))
+                    for error in exc.errors())
+                code = "nugen_safety_rejected" if safety_rejected else "nugen_invalid_response"
+                logging.getLogger("climaguard.nugen").warning(
+                    "nugen_rejection code=%s type=%s fields=%s finish_reason=%s attempt=%s",
+                    code, type(exc).__name__, fields, finish_reason, attempt + 1)
+                validation_failures += 1
+                if validation_failures == 1 and attempt < 2:
+                    payload["messages"][0]["content"] = prompt + (
+                        "\nIMPORTANT: Return one complete JSON object with exactly three unnumbered action sentences. "
+                        "Do not include digits, percentages, phone numbers, or unsupported measurements in any field.")
+                    continue
+                detail = ("Nugen guidance failed safety checks; no advice was shown. Retry."
+                          if safety_rejected else "Nugen returned an invalid guidance format. Retry.")
+                raise NugenFailure(detail, code, 503 if safety_rejected else 502) from exc
             self.last_success_at = datetime.now(timezone.utc)
             return NugenInference(guidance=guidance, model_id=provider.model,
                                   provider_request_id=provider.id, inferred_at=self.last_success_at)
-        raise ServiceUnavailable("Nugen inference is unavailable.")
+        raise NugenFailure("Nugen guidance is temporarily unavailable. Retry shortly.", "nugen_provider_unavailable")

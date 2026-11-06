@@ -2,7 +2,7 @@ import asyncio
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.integrations.supabase import SupabaseGateway, get_gateway
-from app.core.errors import ServiceUnavailable, UpstreamError
+from app.core.errors import ServiceUnavailable, SupabaseRequestError, UpstreamError
 from app.services.zones import GRID_VERSION, grid_zones
 from app.services.screening import grid_screening
 from app.services.osm_source import preview
@@ -39,8 +39,10 @@ async def _mapped_features(gateway: SupabaseGateway, function: str, kind: str, b
     try:
         west, south, east, north = bounds
         rows = await gateway.request("POST", f"/rest/v1/rpc/{function}", json={"p_west": west, "p_south": south, "p_east": east, "p_north": north})
-        if isinstance(rows, list) and rows:
-            total_count = int(rows[0].get("total_count") or len(rows))
+        if not isinstance(rows, list):
+            raise UpstreamError("Unexpected map RPC response")
+        if rows or await gateway.table("osm_import_runs", params={"select": "id", "limit": 1}):
+            total_count = int(rows[0].get("total_count") or len(rows)) if rows else 0
             features = []
             for row in rows:
                 item = {key: value for key, value in row.items() if key != "total_count"}
@@ -49,13 +51,20 @@ async def _mapped_features(gateway: SupabaseGateway, function: str, kind: str, b
                 features.append(item)
             counts = {key: sum(item.get("kind") == key for item in features) for key in ("hospital", "school", "fire_station")} if kind == "facilities" else {}
             return {"status": "available", "storage": "postgis", "features": features, "counts": counts, "total_count": total_count, "returned_count": len(features), "truncated": len(features) < total_count, "source": "PostGIS mapped features; per-record source retained", "detail": None}
-    except (ServiceUnavailable, UpstreamError, HTTPException, ValueError, TypeError) as exc:
+    except ServiceUnavailable:
+        pass
+    except SupabaseRequestError as exc:
+        if exc.code != "PGRST202":
+            logging.getLogger("climaguard.geography").warning("mapped_features_unavailable function=%s type=%s", function, type(exc).__name__)
+            return {"status": "unavailable", "storage": "none", "features": [], "detail": "Facility or road data is temporarily unavailable."}
+    except (UpstreamError, HTTPException, ValueError, TypeError) as exc:
         logging.getLogger("climaguard.geography").warning("mapped_features_unavailable function=%s type=%s", function, type(exc).__name__)
+        return {"status": "unavailable", "storage": "none", "features": [], "detail": "Facility or road data is temporarily unavailable."}
     try:
         return await asyncio.to_thread(preview, bounds, kind)
     except (OSError, ValueError, TypeError) as exc:
         logging.getLogger("climaguard.geography").warning("local_osm_unavailable type=%s", type(exc).__name__)
-        return {"status": "unavailable", "storage": "none", "features": [], "detail": "PostGIS and validated local OSM data are unavailable."}
+        return {"status": "unavailable", "storage": "none", "features": [], "detail": "Validated local OSM data is unavailable."}
 
 
 @router.get("/map/infrastructure")
