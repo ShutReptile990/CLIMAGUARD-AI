@@ -1,5 +1,7 @@
 # Citizen and single-authority workflow setup
 
+> **Status update, 6 November 2026:** The same-authority publication path was subsequently verified on a real official alert, with matching author/approver/publisher actor IDs and a publication audit entry. The older acceptance note below predates that check. A separate TEST-labeled update/withdrawal check remains unverified; do not modify the owner's real alert for a demo. See [project status](PROJECT_STATUS.md) and [seven-minute demo](DEMO_GUIDE.md).
+
 The existing Supabase project has migrations 001–008; the project owner confirmed migrations 009 and 010 applied. A read-only probe confirmed migration 010's `alerts.incident_id` column. [`010_single_authority_alerts.sql`](../database/migrations/010_single_authority_alerts.sql) preserves existing alerts and audits, removes the different-reviewer constraint, adds an optional verified-incident link, and permits audited edits to published alert content. Do not replay earlier migrations or reset data.
 
 ## Role and storage setup

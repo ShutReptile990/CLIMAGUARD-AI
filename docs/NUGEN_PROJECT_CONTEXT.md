@@ -1,5 +1,7 @@
 # CLIMAGUARD AI — project context for Nugen
 
+> **Historical alignment brief.** This document predates the 5 November OSM PostGIS import and the extreme-rainfall demo. For current implementation and evidence, use [AI_INTEGRATION.md](AI_INTEGRATION.md), [DATA_SOURCES.md](DATA_SOURCES.md) and [PROJECT_STATUS.md](PROJECT_STATUS.md). Earlier availability statements below are historical.
+
 **Project:** CLIMAGUARD AI  
 **Tagline:** Predict Earlier. Decide Faster. Protect More.  
 **Setting:** Indradhanu Hackathon 2026; Pune-first climate-risk and emergency-response application.  

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Path
-from app.schemas.analysis import AnalysisResponse, ComparisonResponse, ExposureResponse, ScenarioRequest, SimulationResponse
+from app.schemas.analysis import AnalysisResponse, ComparisonResponse, DemoFloodResponse, ExposureResponse, ScenarioRequest, SimulationResponse
 from app.services.analysis import AnalysisService, get_analysis_service
 
 router = APIRouter(prefix="/analysis", tags=["transparent analysis"])
@@ -8,6 +8,11 @@ router = APIRouter(prefix="/analysis", tags=["transparent analysis"])
 @router.get("/compare", response_model=ComparisonResponse)
 async def compare(service: AnalysisService = Depends(get_analysis_service)):
     return await service.compare()
+
+
+@router.get("/demo/extreme-rainfall", response_model=DemoFloodResponse)
+async def extreme_flood_demo(service: AnalysisService = Depends(get_analysis_service)):
+    return await service.extreme_flood_demo()
 
 
 @router.get("/{zone_id}", response_model=AnalysisResponse)

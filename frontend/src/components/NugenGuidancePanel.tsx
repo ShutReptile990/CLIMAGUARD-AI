@@ -23,10 +23,9 @@ function localTime(value: string | null | undefined): string {
 }
 
 export function RecommendationPanel({ demo, audience = 'citizen', onGuidance }: { demo: boolean; audience?: 'citizen' | 'authority'; onGuidance?: (value: NugenGuidance | null) => void }) {
-  const { localityId, localities, snapshot } = useClimate()
+  const { localityId, localities, snapshot, demoScenarioId: scenarioId, setDemoScenarioId: setScenarioId } = useClimate()
   const status = useNugenStatus(true)
   const scenarios = useQuery({ queryKey: ['nugen-scenarios'], queryFn: api.nugenScenarios, enabled: demo })
-  const [scenarioId, setScenarioId] = useState<NugenScenarioId>('extreme_rainfall')
   const scenario = scenarios.data?.find(item => item.id === scenarioId)
   const [lastValid, setLastValid] = useState<NugenGuidance | null>(null)
   const requestKey = `${localityId}:${audience}:${demo ? `simulation:${scenarioId}` : 'live'}`

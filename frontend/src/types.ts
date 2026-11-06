@@ -39,3 +39,4 @@ export interface PriorityResult { zone_id: string; rank: number | null; score: n
 export interface ComparisonResponse { mode: 'live' | 'simulation'; zones: PriorityResult[]; assessed_at: string; disclaimer: string }
 export interface ScenarioRequest { zone_id: string; rainfall_intensity_mm_h?: number; rainfall_duration_hours: number; temperature_c?: number; humidity_percent?: number; drainage_index?: number }
 export interface SimulationResponse { mode: 'simulation'; inputs: ScenarioRequest; baseline: AnalysisResponse; simulated: AnalysisResponse; priority: PriorityResult; disclaimer: string }
+export interface DemoFloodResponse { mode: 'simulation'; scenario_id: 'extreme_rainfall'; rainfall_intensity_mm_h: number; rainfall_duration_hours: number; zones: Record<string, AnalysisResponse>; overview: AnalysisResponse; disclaimer: string }

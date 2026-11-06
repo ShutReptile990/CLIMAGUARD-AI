@@ -1,5 +1,7 @@
 # CLIMAGUARD AI — five-minute judge demo
 
+> **Earlier five-minute outline.** The current Indradhanu walkthrough, including the extreme-rainfall map and verified single-authority flow, is [DEMO_GUIDE.md](DEMO_GUIDE.md). Some status statements below reflect the date of this earlier outline.
+
 **Preflight:** Use the live backend and a known Pune grid cell. Confirm Open-Meteo and Nugen are available immediately before presenting. If the citizen/authority workflow has not been verified, stop at its prepared screen and say so; do not stage a real warning. Any test report or advisory must begin `TEST —` and be withdrawn or archived after the demo.
 
 ## 0:00–0:35 — The problem

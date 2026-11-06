@@ -5,8 +5,8 @@ import logging
 from datetime import datetime, timezone
 from fastapi import Request
 from app.integrations.supabase import SupabaseGateway
-from app.schemas.analysis import AnalysisResponse, ComparisonResponse, ExposureResponse, FeatureAvailability, PriorityComponent, PriorityResult, ScenarioRequest, SimulationResponse, ZoneMetrics
-from app.schemas.environment import AirQuality, EnvironmentBundle, WeatherData
+from app.schemas.analysis import AnalysisResponse, ComparisonResponse, DemoFloodResponse, ExposureResponse, FeatureAvailability, PriorityComponent, PriorityResult, ScenarioRequest, SimulationResponse, ZoneMetrics
+from app.schemas.environment import AirQuality, EnvironmentBundle, StreamError, WeatherData
 from app.services.environment import EnvironmentService
 from app.services.risk_engine import air_assessment, configured_rules, flood_assessment, heat_assessment
 from app.services.zones import find_zone, grid_zones
@@ -165,6 +165,28 @@ class AnalysisService:
         for rank, item in enumerate(ranked, 1):
             item.rank = rank
         return ComparisonResponse(mode="simulation" if scenario else "live", zones=sorted(results, key=lambda item: (item.rank is None, item.rank or 0)), assessed_at=datetime.now(timezone.utc), disclaimer="Provisional, normalized screening priority. Missing population, mapped assets and vulnerability are disclosed; ranks are not operational dispatch orders.")
+
+    async def extreme_flood_demo(self) -> DemoFloodResponse:
+        """Use the Nugen preset with each cell's sourced context, without live weather or writes."""
+        from app.services.nugen_guidance import SCENARIOS
+        from app.services.zones import coordinates_for
+        preset = SCENARIOS["extreme_rainfall"]
+        context = await self.context_all()
+        now = datetime.now(timezone.utc)
+        unavailable = StreamError(detail="No current environmental values are used in this simulation.")
+
+        def assess(zone_id: str) -> AnalysisResponse:
+            bundle = EnvironmentBundle(zone_id=zone_id, coordinate=coordinates_for(zone_id),
+                weather=unavailable, air_quality=unavailable, history=unavailable,
+                persistence="not_configured", retrieved_at=now)
+            inputs = ScenarioRequest(zone_id=zone_id, rainfall_intensity_mm_h=preset.rainfall_intensity_mm_h,
+                                     rainfall_duration_hours=preset.rainfall_duration_hours or 6)
+            return assess_bundle(bundle, self.metrics_from_context(context.get(zone_id)), scenario=inputs)
+
+        return DemoFloodResponse(rainfall_intensity_mm_h=preset.rainfall_intensity_mm_h,
+            rainfall_duration_hours=preset.rainfall_duration_hours or 6,
+            zones={zone.slug: assess(zone.slug) for zone in grid_zones()}, overview=assess("pune"),
+            disclaimer="SIMULATION — NOT CURRENT CONDITIONS. Heuristic flood indices, not calibrated probabilities or inundation boundaries. Mapped drain proximity is not verified capacity. No environmental observations, incidents or alerts are written.")
 
     async def simulate(self, request: ScenarioRequest) -> SimulationResponse:
         if not any(value is not None for value in (request.rainfall_intensity_mm_h, request.temperature_c, request.humidity_percent, request.drainage_index)):

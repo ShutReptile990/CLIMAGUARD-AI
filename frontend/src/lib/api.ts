@@ -1,4 +1,4 @@
-import type { AnalysisResponse, ComparisonResponse, EnvironmentBundle, ExposureResponse, Incident, MapScreening, MappedFacility, MappedResponse, MappedRoad, NugenGuidance, NugenScenario, NugenScenarioId, NugenStatus, ScenarioRequest, SimulationResponse, Snapshot, ZoneCollection } from '../types'
+import type { AnalysisResponse, ComparisonResponse, DemoFloodResponse, EnvironmentBundle, ExposureResponse, Incident, MapScreening, MappedFacility, MappedResponse, MappedRoad, NugenGuidance, NugenScenario, NugenScenarioId, NugenStatus, ScenarioRequest, SimulationResponse, Snapshot, ZoneCollection } from '../types'
 import type { Profile } from '../auth'
 import { supabase } from './supabase'
 const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '').replace(/\/api(?:\/v1)?$/, '')
@@ -40,6 +40,7 @@ export const api = {
   mapRoads: (bbox?: string) => request<MappedResponse<MappedRoad>>(`/map/roads${bbox ? `?bbox=${encodeURIComponent(bbox)}` : ''}`),
   analysis: (zoneId: string) => request<AnalysisResponse>(`/analysis/${encodeURIComponent(zoneId)}`),
   comparison: () => request<ComparisonResponse>('/analysis/compare'),
+  extremeFloodDemo: () => request<DemoFloodResponse>('/analysis/demo/extreme-rainfall'),
   exposure: (zoneId: string) => request<ExposureResponse>(`/analysis/${encodeURIComponent(zoneId)}/exposure`),
   simulate: (scenario: ScenarioRequest) => request<SimulationResponse>('/analysis/simulate', { method: 'POST', body: JSON.stringify(scenario) }),
   nugenStatus: () => request<NugenStatus>('/nugen/status'),

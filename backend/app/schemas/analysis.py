@@ -120,3 +120,13 @@ class SimulationResponse(BaseModel):
     simulated: AnalysisResponse
     priority: PriorityResult
     disclaimer: str
+
+
+class DemoFloodResponse(BaseModel):
+    mode: Literal["simulation"] = "simulation"
+    scenario_id: Literal["extreme_rainfall"] = "extreme_rainfall"
+    rainfall_intensity_mm_h: float
+    rainfall_duration_hours: int
+    zones: dict[str, AnalysisResponse]
+    overview: AnalysisResponse
+    disclaimer: str

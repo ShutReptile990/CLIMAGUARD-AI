@@ -1,45 +1,61 @@
-# Environmental and geographic data
+# Data sources, coverage and attribution
 
-## Connected services
+[Project overview](../README.md) · [Risk methodology](RISK_METHODOLOGY.md) · [Flood geography](FLOOD_GEOGRAPHY.md)
 
-- Open-Meteo Forecast API: current **model estimates** for temperature, relative humidity and precipitation; hourly precipitation and probability; daily high/low temperature and precipitation. Times use `Asia/Kolkata`, temperature °C, rain mm, probability %.
-- Open-Meteo Air Quality API: current CAMS model estimates for **US AQI**, PM2.5, PM10, NO₂, O₃, SO₂ and CO when supplied. Pollutants use μg/m³; US AQI is never represented as Indian AQI.
-- Open-Meteo Historical Archive: daily precipitation totals and mean 2 m temperature for a 30-day window ending three days before the request. These are **reanalysis**, not direct station observations.
-- OpenStreetMap base tiles and the user-supplied `data/raw/pune_infrastructure.geojson` snapshot are available. OSM features are mapped records, not independently verified emergency facilities. The supplied file is validated locally and can be previewed on the map while PostGIS credentials are unavailable; no database import has occurred.
+The grid is a declared Pune **pilot analysis box**, not the Pune municipal boundary. Data availability is reported for the nine cells, not automatically for the whole city. The latest readbacks below are dated local checks; a new deployment must verify its own database and providers.
 
-Open-Meteo responses are cached in process. Current/model estimate rows can be upserted into `climate_observations` and `air_quality_observations` when the Supabase secret key and migration 003 are present. Provider failures return explicit unavailable states. There is no substitute provider or fabricated reading.
+## Environmental services
 
-## Pune analysis grid
+| Service | Application use | Time/units and limitation |
+| --- | --- | --- |
+| [Open-Meteo Forecast API](https://open-meteo.com/en/docs) | Current temperature, relative humidity and precipitation; hourly rain/probability; daily temperature and rain forecasts | Asia/Kolkata timestamps; °C, %, mm and mm/h. Provider **model estimates**, not on-site observations |
+| [Open-Meteo Historical Archive](https://open-meteo.com/en/docs/historical-weather-api) | Daily rain totals and mean temperature history | Historical **reanalysis**, not local station observations; not substituted for the flood rule's prior-72-hour forecast-model term |
+| [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) | Provider US AQI and supported PM2.5, PM10, NO₂, O₃, SO₂, CO | Timestamps and provider units in API response; pollutants usually µg/m³. **US AQI is not Indian AQI** |
 
-The `pune-core-grid-v1` 3×3 WGS84 grid covers a declared pilot box (south 18.45, north 18.60, west 73.77, east 73.96). Cells are 0.05° latitude by approximately 0.0633° longitude. IDs are deterministic UUIDv5 values; slugs are stable. This box was selected to cover the existing Pune pilot localities. It is **not** an official city or ward boundary. Map display bins for 24-hour forecast rainfall, next-two-day maximum temperature and US AQI are exploratory screening only. They are not physical flood-inundation or impact boundaries.
+The backend uses async httpx, validation, retries/timeouts and an in-process cache. Failed provider streams return explicit unavailable states; no fabricated live reading replaces them. Selected current model records can be persisted in Supabase when its server configuration is present.
 
-## OSM ingestion
+Air-quality provider attribution: **Open-Meteo Air Quality API; Copernicus Atmosphere Monitoring Service (CAMS) global model data where supplied.** Open-Meteo's [air-quality documentation](https://open-meteo.com/en/docs/air-quality-api) asks users to credit the underlying CAMS provider as well as Open-Meteo. This source attribution does not turn modeled concentrations into ground-station measurements.
 
-The supplied GeoJSON was downloaded from OSM through overpass-turbo (file timestamp `2026-10-29T09:39:21Z`, source copyright ODbL). It contains 6,542 features. The importer accepts valid WGS84 point/polygon hospital, school and fire-station features with an actual source name, plus LineString major roads. Polygon facilities retain their original footprint in `osm_geometry` and receive an interior point marker in `location`; all geometry is stored with SRID 4326. It retains OSM type/ID and original tags. It ignores unclassified features and records malformed or unsupported classified features as failures in the report. Existing OSM records are skipped by the database unique keys, never updated or deleted.
+## Pune grid and geographic context
 
-From `backend`, install `requirements-geo.txt` and run `python scripts/import_pune_infrastructure.py` to validate without writes. Inspect `data/processed/pune_infrastructure_validation.json`. Apply migrations 001–005, provide a server-side `DATABASE_URL` for the Supabase PostgreSQL connection, then run `python scripts/import_pune_infrastructure.py --import-db`. The report then records actual inserted and already-existing row counts. Repeating the import is safe. Do not put `DATABASE_URL` in frontend environment variables. The previous `scripts/ingest_osm.py --fetch` remains available for a deliberate future Overpass refresh and also skips existing rows. Map interactions use bounded PostGIS RPCs, or the labeled local preview, and never query Overpass.
+[`pune-core-grid-v1`](../backend/app/services/zones.py) divides 18.45–18.60°N and 73.77–73.96°E into a reproducible 3 × 3 grid in EPSG:4326. Cell slugs A1–C3 map to deterministic UUIDs. The cells are **not official wards or flood boundaries**. Spatial calculations use cell geometry or centroid as documented by each endpoint. Overlapping non-grid localities must not be summed with the disjoint grid population estimates.
 
-Current validation: 1,030 facility candidates (692 hospitals, 318 schools, 20 fire stations), 5,438 major-road candidates (1,570 primary, 1,201 secondary, 2,667 tertiary), zero duplicate OSM IDs, and 74 rejected records (73 facilities without source names and one polygon incorrectly tagged as a road). Database inserted count is zero because no `DATABASE_URL` is configured. Map feature counts apply to the current viewport and can be capped; zoom in when the map reports truncation.
+| Dataset | Verified local coverage | What it supports and does not support |
+| --- | --- | --- |
+| [Copernicus DEM GLO-30 via OpenTopography](https://opentopography.org/) | 9/9 cells with persisted mean elevation and mean slope | Cell terrain context and the flood rule's flat-terrain term; no drainage-flow or inundation model |
+| [WorldPop Global2 API v2](https://api.worldpop.org/v2/) | 9/9 disjoint cells, 2025 model estimates at 100 m in the validated cache and Supabase | Estimated people **in a cell**, not people exposed to a hazard |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) waterways | 213 source lines stored in PostGIS; 9/9 cell mapped-distance indicators | Proximity to mapped waterway/drain lines, **not** verified capacity, condition or effectiveness |
+| OpenStreetMap infrastructure/roads | 1,030 classified facilities and 5,438 major roads imported in the 5 November 2026 project readback | Mapped hospital/school/fire-station markers and road geometry; not verified access, safety or physical damage |
 
-## Elevation, population and optional attributes
+### Terrain provenance
 
-`scripts/import_zone_datasets.py` requires actual licensed raster files and a metadata JSON containing `dataset_version`, `sources`, acquisition dates, licence, CRS, units, processing steps and limitations. DEM values must be meters. Optional slope rasters must be in degrees and declare `slope_unit: "degrees"`. Population raster cells must represent **people per pixel**; density grids need conversion before import. The utility uses each zone polygon to compute DEM and slope means and population sums, ignoring NoData pixels. Partial pixel intersection is approximate (`all_touched=False`). Optional CSV columns are `zone_slug,drainage_index,historical_flood_exposure,vulnerability_index`, with indices defined on 0–1 and provenance in metadata. Run `--dry-run` before writing. Do not fill missing cells with zero.
+The supplied [`pune_elevation.tif`](../data/raw/pune_elevation.tif) was validated as an EPSG:4326, single-band GeoTIFF with 684 × 540 finite pixels covering all nine cells. It has no embedded vertical-unit or NoData tag; the supplied [verified metadata](../backend/examples/terrain_population_metadata_verified.json) declares metres and names the product. The recorded citation is: **European Space Agency (2024), Copernicus Global Digital Elevation Model, distributed by OpenTopography, DOI 10.5069/G9028PQB**. The metadata retains this rights notice: “Copyright DLR e.V. 2010-2014 and Airbus Defence and Space GmbH 2014-2018; provided under COPERNICUS by the European Union and ESA; all rights reserved.” Check the source terms before redistributing raster assets. The [validation report](../data/processed/pune_zone_metrics_validation.json) records the source hash, CRS, pixel coverage, masks, resolution and cell metrics. The file named [`pune_population.tif`](../data/raw/pune_population.tif) is **not** a usable population GeoTIFF in this repository.
 
-A structurally valid DEM and its supplied verified product metadata are now present. Mean slope is persisted for all nine cells. No valid population raster, verified drainage-capacity dataset, vulnerability index or historical flood-exposure dataset has been supplied. The [OSM waterway pipeline](FLOOD_GEOGRAPHY.md) supplies persisted mapped proximity only. WorldPop API population is persisted for all nine cells. Potential flood-exposed population remains unavailable without a validated hazard footprint. See [analysis methods](../ml/README.md) for the current rainfall index and exposure assumptions.
+The DEM is currently tracked under `data/raw`. The repository's MIT license covers project code; it does **not** grant separate redistribution rights for third-party raster or OSM data. Confirm the DEM's applicable redistribution terms with its source before making the repository public or bundling the raster into a release.
 
-### Pune terrain and WorldPop integration (updated 31 October 2026)
+### WorldPop provenance
 
-`data/raw/pune_elevation.tif` is a single-band GeoTIFF: EPSG:4326, 684×540 pixels, approximately 1 arcsecond resolution, 9/9 analysis cells covered and all pixels finite. It lacks an embedded vertical unit and NoData marker; the full finite-pixel check records this limitation. The supplied `backend/examples/terrain_population_metadata_verified.json` identifies Copernicus DEM GLO-30 via OpenTopography, declares metres, and supplies citation, access terms and retrieval time. The validation report is `validated`, with 9/9 calculated slopes. All nine slopes are now persisted in the existing Supabase zone metric rows; source SHA256 and metadata are retained. `data/raw/pune_population.tif` remains an invalid placeholder; use the persisted WorldPop API estimates rather than this file.
+The [WorldPop validation report](../data/processed/pune_worldpop_validation.json) records each polygon, dataset year, `100m` resolution, retrieval time, API task identifier and source URL. A 29 October 2026 API readback yielded nine nonoverlapping cell estimates summing to **2,975,502 people across this analysis grid**. That is a provider model estimate, not a Pune city census total or flood-exposed count. The same estimates were persisted without overwriting existing terrain fields. Do not create a Pune-wide total from a mixture of overlapping grid/locality polygons.
 
-For a repeat import of the same DEM, use the supplied verified metadata and confirm the raster SHA256 `e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f`. From `backend`:
+### OpenStreetMap attribution and ingestion
 
-```text
-python scripts/import_pune_terrain_population.py --metadata examples/terrain_population_metadata_verified.json --dem-only
-python scripts/import_pune_terrain_population.py --metadata examples/terrain_population_metadata_verified.json --dem-only --import-supabase
+**© OpenStreetMap contributors.** OSM data are available under the [Open Database License (ODbL)](https://www.openstreetmap.org/copyright). The map retains OSM tile attribution and per-feature OSM record links. The supplied `pune_infrastructure.geojson` has 6,542 features; [validation](../data/processed/pune_infrastructure_validation.json) accepted 1,030 named facility candidates (692 hospitals, 318 schools, 20 fire stations) and 5,438 major-road candidates, with 74 rejected classified records. Source type/ID, tags, geometry and attribution are preserved in the insert-only importer. Map requests use bounded PostGIS spatial RPCs; they do **not** query public Overpass on every interaction. When database integration is absent, the API can return a labeled validated local preview rather than claiming PostGIS storage.
+
+The waterway [validation report](../data/processed/pune_waterways_validation.json) covers 213 OSM lines and their mapped-distance metrics. See [FLOOD_GEOGRAPHY.md](FLOOD_GEOGRAPHY.md) for its import commands and optional municipal-data format. Any future municipal drainage dataset needs provenance and independent hydraulic attributes before it can be used as a capacity score.
+
+## Reproducible import checks
+
+From `backend`, the following **validate without writing**:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\import_pune_infrastructure.py
+.\.venv\Scripts\python.exe scripts\import_pune_waterways.py
+.\.venv\Scripts\python.exe scripts\import_pune_terrain_population.py --metadata examples/terrain_population_metadata_verified.json --dem-only
+.\.venv\Scripts\python.exe scripts\audit_osm_postgis.py
 ```
 
-The first command validates without writes; require report status `validated`. The second uses the configured server-side Supabase secret key and verifies readback. It patches only DEM mean, slope and DEM provenance in the existing WorldPop metric rows, and skips identical source hashes on repeat. The JSON report is `data/processed/pune_zone_metrics_validation.json`; it includes source tags, SHA256, CRS, resolution, NoData/mask validation, covered pixels, mean/min/max elevation and UTM 43N mean slope per cell. The existing `--import-db` route remains available if `DATABASE_URL` is configured. Migration 004 is already present in the current database; do not rerun it. Slope is a screening input, not hydrologic flow modeling.
+The last command is a database readback and requires configured Supabase access. Insert modes (`--import-supabase` or `--import-db`, depending on the script) are deliberate, server-side operations and are unnecessary for the already-populated project. See [database setup](../database/README.md) before applying migrations or imports.
 
-Alternatively, `python scripts/import_worldpop.py --year YEAR --resolution 100m` requests the nine disjoint GeoJSON grid polygons through the [WorldPop Global2 API v2](https://api.worldpop.org/v2/) and caches successful results by polygon/year/resolution. Inspect `data/processed/pune_worldpop_validation.json`; add `--import-db` and `DATABASE_URL` to persist estimates. Optional `WORLDPOP_API_KEY` stays server-side. The script records source, year, resolution, retrieval time and API task ID. Use the same `dataset_version` (`pune-terrain-population-v1`) as a DEM import so both attributes merge in one row. API polygon totals estimate **people within an analysis cell**, not people exposed to flood or heat. A potential-exposure number remains unavailable until a validated hazard footprint and matching population coverage exist.
+## Missing evidence
 
-A live WorldPop v2 request for dataset year 2025 at 100 m resolution succeeded for all nine nonoverlapping grid cells on 29 October 2026. The cached cell estimates sum to 2,975,502 people across this analysis grid. This is a sourced model estimate, not a census or exposed population count. On 30 October, nine validated estimates were inserted into Supabase through `python scripts/persist_worldpop_supabase.py --import-db` from `backend`; repeat runs skip matching records and do not replace conflicts. The live analysis RPC now reports Supabase provenance. A broader locality such as `pune` does not inherit one grid cell's population.
+No verified drainage-capacity value, historical flood-event exposure series, calibrated flood model or validated hazard footprint is available. A mapped road or hospital intersecting a cell is **co-located**, not flooded or damaged. Potential population exposure remains unavailable. The [dataset audit](../ml/README.md) explains why supervised flood training is disabled.

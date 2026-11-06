@@ -11,5 +11,6 @@ export const useMappedInfrastructure = (bbox?: string, enabled = true) => useQue
 export const useMappedRoads = (enabled: boolean, bbox?: string) => useQuery({ queryKey: ['map-roads', bbox ?? 'default'], queryFn: () => api.mapRoads(bbox), enabled, retry: 1, staleTime: 10 * 60_000 })
 export const useAnalysis = (zoneId: string, enabled: boolean) => useQuery({ queryKey: ['analysis', zoneId], queryFn: () => api.analysis(zoneId), enabled, retry: 1, staleTime: 10 * 60_000 })
 export const useComparison = (enabled: boolean) => useQuery({ queryKey: ['analysis-compare'], queryFn: api.comparison, enabled, retry: 1, staleTime: 10 * 60_000 })
+export const useExtremeFloodDemo = (enabled: boolean) => useQuery({ queryKey: ['extreme-flood-demo'], queryFn: api.extremeFloodDemo, enabled, retry: 1, staleTime: 10 * 60_000 })
 export const useExposure = (zoneId: string, enabled: boolean) => useQuery({ queryKey: ['analysis-exposure', zoneId], queryFn: () => api.exposure(zoneId), enabled, retry: 1, staleTime: 10 * 60_000 })
 export const useNugenStatus = (enabled: boolean) => useQuery({ queryKey: ['nugen-status'], queryFn: api.nugenStatus, enabled, retry: 0, staleTime: 60_000 })

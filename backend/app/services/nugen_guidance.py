@@ -17,7 +17,7 @@ from app.services.zones import LEGACY_CENTERS, coordinates_for, find_zone
 
 # Explicit hypothetical inputs. There is no AQI simulator, so none is invented.
 SCENARIOS = {
-    "extreme_rainfall": GuidanceScenario(id="extreme_rainfall", label="Extreme rainfall", rainfall_intensity_mm_h=40,
+    "extreme_rainfall": GuidanceScenario(id="extreme_rainfall", label="Extreme Rainfall / Severe Flood Screening", rainfall_intensity_mm_h=25,
         rainfall_duration_hours=6, limitation="Hypothetical rainfall intensity; no forecast, observed flood or inundation boundary."),
     "severe_heat": GuidanceScenario(id="severe_heat", label="Severe heat", temperature_c=43, humidity_percent=60,
         limitation="Hypothetical temperature and humidity; not an official heatwave warning."),

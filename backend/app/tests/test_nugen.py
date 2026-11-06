@@ -220,7 +220,7 @@ def test_simulation_contract_rejects_invalid_modes_and_scenarios():
                     {"mode": "simulation", "scenario_id": "extreme_rainfall", "rainfall_intensity_mm_h": 999}):
         with pytest.raises(ValidationError):
             GuidanceRequest.model_validate(payload)
-    assert SCENARIOS["extreme_rainfall"].rainfall_intensity_mm_h == 40
+    assert SCENARIOS["extreme_rainfall"].rainfall_intensity_mm_h == 25
     assert "air" in SCENARIOS["combined_stress"].limitation
 
 

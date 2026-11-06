@@ -95,7 +95,9 @@ def flood_assessment(weather: WeatherData | None, metrics: ZoneMetrics | None = 
     included = [row for row in candidates if row[4] is not None]
     weight_sum = sum(row[3] for row in included)
     score = round(100 * sum(row[3] * row[4] for row in included) / weight_sum, 1)
-    warnings = [f"{row[0]} unavailable; remaining weights renormalized." for row in candidates if row[4] is None]
+    warnings = [("Drainage deficiency unavailable: mapped drain proximity does not establish drainage capacity; remaining weights renormalized."
+                 if row[0] == "Drainage deficiency" else
+                 f"{row[0]} unavailable; remaining weights renormalized.") for row in candidates if row[4] is None]
     warnings.append("Screening index only; no labeled flood events, calibrated probability, or inundation model.")
     if weather and len(future) < 24 and rainfall_intensity_mm_h is None:
         warnings.append(f"Only {len(future)} forecast hours supplied for the 24-hour window.")

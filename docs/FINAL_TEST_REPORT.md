@@ -1,5 +1,7 @@
 # CLIMAGUARD AI — final readiness evidence
 
+> **Dated local acceptance snapshot.** Later PostGIS infrastructure import, real simulated Nugen guidance and the extreme-rainfall map are documented in [PROJECT_STATUS.md](PROJECT_STATUS.md). This report does not establish a public hosted deployment.
+
 Checked 2 November 2026 in the existing local workspace. **Deployment status: prepared, not hosted.** PASS means an actual check succeeded; PARTIAL identifies a verified subset; BLOCKED means the required account, session or dataset was unavailable. No localhost URL is a production URL.
 
 ## Acceptance results
@@ -33,7 +35,7 @@ The readiness script uses ASGI transport to exercise FastAPI directly; it does n
 ## Remaining acceptance sequence
 
 1. In a safe test context, publish an explicitly TEST-labeled advisory, then update and withdraw it. Read back the content-change and withdrawal audit entries, and confirm withdrawn/expired alerts remain hidden. Migration 010 has already been applied; do not replay it. The real official alert confirmed by the owner must remain published unless the authority decides otherwise.
-2. Import the validated local OSM hospital/school/road dataset into PostGIS with the existing importer and verified database access, or clearly identify those layers as local preview in any demo.
+2. **Completed after this dated report:** On 5 November 2026 the existing project imported 1,030 classified OSM facilities and 5,438 roads into PostGIS. Verify `storage=postgis` again on the deployed project; when it is unconfigured, identify any local preview explicitly.
 3. Connect hosting accounts, set the variables in [DEPLOYMENT.md](DEPLOYMENT.md), deploy both services and repeat live data, auth, Nugen and browser checks at the actual HTTPS URLs. Record those URLs and outcomes here when they exist.
 
 No verified flood labels, calibrated model or hazard footprint should be represented as complete during this sequence.

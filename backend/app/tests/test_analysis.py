@@ -43,6 +43,19 @@ def test_sourced_drainage_and_historical_exposure_change_index():
     assert poor.score > good.score
 
 
+def test_dem_slope_enters_cell_index_without_treating_mapped_drain_distance_as_capacity():
+    weather = demo_weather(2)
+    overview = flood_assessment(weather, now=NOW)
+    cell = flood_assessment(weather, ZoneMetrics(slope_mean_degrees=3.525,
+        mapped_drain_distance_m=2431.64), now=NOW)
+    assert "Flat-terrain indicator" not in {item.name for item in overview.factors}
+    assert "Flat-terrain indicator" in {item.name for item in cell.factors}
+    assert "Drainage deficiency" not in {item.name for item in cell.factors}
+    assert any("mapped drain proximity does not establish drainage capacity" in warning for warning in cell.warnings)
+    assert any("Historical flood exposure unavailable" in warning for warning in cell.warnings)
+    assert cell.score != overview.score  # The missing slope is renormalized, never imputed as zero.
+
+
 def test_heat_index_domain_categories_and_missing_temperature():
     assert heat_index_c(35, 60) > 35
     assert heat_index_c(20, 60) is None
@@ -105,3 +118,33 @@ def test_api_schema_exposes_typed_analysis_contracts():
     assert "/api/analysis/{zone_id}" in schema["paths"]
     assert "/api/analysis/simulate" in schema["paths"]
     assert schema["paths"]["/api/analysis/simulate"]["post"]["requestBody"]
+    assert "/api/analysis/demo/extreme-rainfall" in schema["paths"]
+
+
+def test_extreme_demo_reuses_nugen_inputs_and_sourced_cell_context(monkeypatch):
+    import asyncio
+    from app.services.analysis import AnalysisService
+    from app.services.nugen_guidance import SCENARIOS
+    from app.services.zones import grid_zones
+    service = AnalysisService(None, None)
+    async def context():
+        return {zone.slug: {"slope_mean_degrees": index,
+                "mapped_drain_distance_m": 100 + index,
+                "provenance": {"dem": {"source": "TEST sourced DEM"},
+                               "mapped_waterways": {"source": "TEST OSM"}}}
+                for index, zone in enumerate(grid_zones())}
+    monkeypatch.setattr(service, "context_all", context)
+    result = asyncio.run(service.extreme_flood_demo())
+    assert len(result.zones) == 9
+    assert result.rainfall_intensity_mm_h == SCENARIOS["extreme_rainfall"].rainfall_intensity_mm_h
+    scores = []
+    for zone_id, analysis in result.zones.items():
+        flood = analysis.assessments[0]
+        scores.append(flood.score)
+        assert analysis.mode == "simulation" and flood.simulated
+        assert flood.factors[0].value == result.rainfall_intensity_mm_h * result.rainfall_duration_hours
+        assert "Drainage deficiency" not in {factor.name for factor in flood.factors}
+        assert analysis.metrics.mapped_drain_distance_m is not None
+    assert len(set(scores)) > 1
+    assert result.overview.metrics is None
+    assert 0 <= result.overview.assessments[0].score <= 100
