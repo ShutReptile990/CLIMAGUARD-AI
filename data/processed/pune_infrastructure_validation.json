@@ -1,7 +1,7 @@
 {
   "summary": {
     "source": "OpenStreetMap GeoJSON",
-    "source_file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_infrastructure.geojson",
+    "source_file": "data\\raw\\pune_infrastructure.geojson",
     "source_sha256": "3bafef8adaa266e2c589b2bb288ffc6729368143e725b2a115ab60b630292cf7",
     "osm_timestamp": "2026-10-29T09:39:21Z",
     "source_copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",

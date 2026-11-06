@@ -1,6 +1,6 @@
 # CLIMAGUARD AI deployment
 
-**Status (1 November 2026): prepared locally, not deployed.** No Vercel or Render account connection or CLI session is available in this workspace. Do not present localhost as a public URL. The existing Supabase project and deployed Nugen model are reused.
+**Status (6 November 2026): deployment configuration is production-safe; hosted URLs are not stored in the repository.** Supply the actual Render and Vercel origins in their deployment dashboards. Do not present localhost as a public URL. The existing Supabase project and deployed Nugen model are reused.
 
 ## 1. Verify the database and repository
 
@@ -20,7 +20,7 @@ Set the Blueprint's prompted environment variables in Render, never in source:
 - `SUPABASE_SECRET_KEY`: server-side secret/service-role credential; never expose in Vercel.
 - `NUGEN_API_KEY`: deployed aligned-model API key; server-side only.
 - `NUGEN_MODEL_ID`: `model_01m66gqc3qk10zdy` for the currently verified deployment, unless the model owner has explicitly replaced it.
-- `CORS_ORIGINS`: exact HTTPS Vercel origin(s), comma-separated. Include only deployment origins that need browser access.
+- `CORS_ORIGINS`: exact HTTPS Vercel origin(s), comma-separated, with no path or trailing wildcard. Include the production domain and only the preview domains that actually need browser access. Production startup now rejects missing, wildcard, HTTP, or path-bearing values.
 
 `APP_ENV=production` is in the Blueprint. The existing Nugen endpoint defaults to `https://api.nugen.in/api/v3/inference/chat/completions`; set `NUGEN_INFERENCE_URL` only if the deployed model's verified endpoint differs. `DATABASE_URL` is not required for normal API operation because the app uses Supabase REST, but direct raster/OSM import scripts may need it. `sync: false` prompts for values at initial Blueprint creation; for an existing Render service, add or update these variables in its Environment page. [Render's secret variable guidance](https://render.com/docs/blueprint-spec#prompting-for-secret-values).
 
@@ -32,17 +32,26 @@ Import the same repository into Vercel with **Root Directory `frontend`**. Use f
 
 Set the following Vercel build environment variables:
 
-- `VITE_API_BASE_URL=https://<actual-backend-host>` (origin only; the client appends `/api/v1`).
+- `VITE_API_BASE_URL=https://<actual-backend-host>` (the Render origin only; the client appends `/api/v1`). A trailing `/api` or `/api/v1` is normalized, but an unrelated path is rejected.
 - `VITE_SUPABASE_URL=https://<existing-project>.supabase.co`.
 - `VITE_SUPABASE_PUBLISHABLE_KEY=<browser-safe-publishable-key>`.
 
-Vite embeds `VITE_` variables in browser JavaScript. Never add `SUPABASE_SECRET_KEY`, `NUGEN_API_KEY` or `DATABASE_URL` to Vercel. Redeploy after changing a Vite build variable. [Vercel's Vite environment guidance](https://vercel.com/docs/frameworks/frontend/vite#environment-variables).
+Vite embeds `VITE_` variables in browser JavaScript. Never add `SUPABASE_SECRET_KEY`, `NUGEN_API_KEY` or `DATABASE_URL` to Vercel. The production build intentionally fails if `VITE_API_BASE_URL` is missing or is not HTTPS, preventing the SPA rewrite from silently serving `index.html` for API calls. Redeploy after changing a Vite build variable. [Vercel's Vite environment guidance](https://vercel.com/docs/frameworks/frontend/vite#environment-variables).
 
 ## 4. Complete cross-origin authentication
 
 1. Add the final Vercel HTTPS origin to backend `CORS_ORIGINS` in Render, then redeploy/restart the backend.
 2. In the existing Supabase Auth URL configuration, set the production site URL and allow the deployed origin plus `/reset-password` as a redirect destination. Retain localhost redirects only if local development is still needed.
 3. Test sign-in, refresh, password reset, logout, citizen ownership, and authority-only navigation using accounts you control. The backend verifies every bearer token and role; frontend navigation is only a convenience layer.
+
+The app sends Supabase access tokens in the `Authorization` header rather than cross-origin cookies. CORS therefore permits that header while keeping credentialed wildcard CORS disabled.
+
+## Redeployment order
+
+1. In Render, set the server variables above, set `CORS_ORIGINS` to the exact Vercel HTTPS origin, and deploy the backend.
+2. Verify `GET https://<render-origin>/api/health` and an `OPTIONS` preflight whose `Origin` is the exact Vercel origin.
+3. In Vercel, set the three `VITE_` variables above for Production (and separately for Preview only if previews are supported), then redeploy the frontend.
+4. Test public climate/map/alert routes, sign-in and profile, incident workflows, and Nugen through the deployed frontend. Do not test authority mutations with an untrusted account.
 
 ## 5. Post-deployment acceptance
 

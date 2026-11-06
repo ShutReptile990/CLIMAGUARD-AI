@@ -59,6 +59,31 @@ def test_health():
     assert response.json()["status"] == "ok"
 
 
+def test_cors_preflight_allows_configured_frontend_and_authorization_header():
+    response = call(
+        "OPTIONS",
+        "/api/v1/profile",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "authorization" in response.headers["access-control-allow-headers"].lower()
+
+
+def test_cors_preflight_rejects_unconfigured_origin():
+    response = call(
+        "OPTIONS",
+        "/api/v1/profile",
+        headers={"Origin": "https://untrusted.example", "Access-Control-Request-Method": "GET"},
+    )
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
 def test_profile_requires_authentication():
     response = call("GET", "/api/profile")
     assert response.status_code == 401

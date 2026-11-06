@@ -1,8 +1,9 @@
 import type { AnalysisResponse, ComparisonResponse, DemoFloodResponse, EnvironmentBundle, ExposureResponse, Incident, MapScreening, MappedFacility, MappedResponse, MappedRoad, NugenGuidance, NugenScenario, NugenScenarioId, NugenStatus, ScenarioRequest, SimulationResponse, Snapshot, ZoneCollection } from '../types'
 import type { Profile } from '../auth'
 import { supabase } from './supabase'
-const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '').replace(/\/api(?:\/v1)?$/, '')
-const apiUrl = (path: string) => `${BASE}/api/v1${path}`
+import { buildApiUrl, normalizeApiBase } from './apiConfig'
+const BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL, import.meta.env.PROD)
+const apiUrl = (path: string) => buildApiUrl(BASE, path)
 export class ApiError extends Error { constructor(message: string, public status?: number) { super(message) } }
 async function request<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
   let response: Response

@@ -1,4 +1,5 @@
 from functools import lru_cache
+from urllib.parse import urlsplit
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -26,11 +27,28 @@ class Settings(BaseSettings):
     def ordered_risk_thresholds(self):
         if not (self.flood_moderate_index < self.flood_high_index < self.flood_severe_index and self.heat_moderate_c < self.heat_high_c < self.heat_severe_c):
             raise ValueError("Risk thresholds must be strictly increasing")
+        # Resolve this at startup so an unsafe or malformed CORS deployment fails closed.
+        self.origins
         return self
 
     @property
     def origins(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        origins: list[str] = []
+        for raw_origin in self.cors_origins.split(","):
+            origin = raw_origin.strip().rstrip("/")
+            if not origin:
+                continue
+            parsed = urlsplit(origin)
+            if (origin == "*" or parsed.scheme not in {"http", "https"} or not parsed.netloc
+                    or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment):
+                raise ValueError("CORS_ORIGINS must contain comma-separated http(s) origins without paths or credentials")
+            if self.app_env.lower() == "production" and parsed.scheme != "https":
+                raise ValueError("CORS_ORIGINS must use HTTPS in production")
+            if origin not in origins:
+                origins.append(origin)
+        if self.app_env.lower() == "production" and not origins:
+            raise ValueError("CORS_ORIGINS is required in production")
+        return origins
 
     @property
     def configured(self) -> bool:

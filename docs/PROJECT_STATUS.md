@@ -187,6 +187,13 @@ A service-role credential previously present in an example file was removed duri
 
 See [method and evidence](../ml/README.md), [data sources](DATA_SOURCES.md), and [database setup](../database/README.md).
 
+## Vercel–Render connectivity hardening (2026-11-06)
+
+- The production failure mode was a missing `VITE_API_BASE_URL`: the shared client reduced it to an empty base and requested Vercel's own `/api/v1/*` paths, while the SPA rewrite returned `index.html`. The browser therefore never reached Render.
+- API origin parsing is now shared by the Vite build and runtime client. Production requires an explicit HTTPS Render origin, normalizes trailing `/api` or `/api/v1`, and rejects ambiguous paths; development may continue to use the local Vite proxy.
+- Backend CORS accepts only configured, exact HTTP(S) origins, rejects wildcard origins, and requires HTTPS origins in production. Bearer-token `Authorization` and JSON preflights remain supported without exposing server credentials.
+- Render continues to bind `app.main:app` to `0.0.0.0:$PORT`, with `/api/health` as its non-sensitive health check. Hosted acceptance remains pending because the actual Render and Vercel URLs are not present in repository configuration.
+
 ## Extreme rainfall demo screening (2026-11-06)
 
 - Demo Mode now calls read-only `GET /api/v1/analysis/demo/extreme-rainfall`. It reuses the Nugen `extreme_rainfall` preset (hypothetical 25 mm/h for six hours, 150 mm total) and the unchanged `flood-rainfall-index-v1` for each of the nine analysis cells. No simulated environmental observations, incidents or alerts are written.

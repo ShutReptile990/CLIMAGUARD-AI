@@ -5,7 +5,7 @@
   "generated_at_utc": "2026-10-31T07:07:38.030527+00:00",
   "sources": {
     "dem": {
-      "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+      "file": "data\\raw\\pune_elevation.tif",
       "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
       "crs": "EPSG:4326",
       "units": "metres",
@@ -52,7 +52,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
@@ -97,7 +97,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
@@ -142,7 +142,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
@@ -187,7 +187,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
@@ -232,7 +232,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
@@ -277,7 +277,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
@@ -322,7 +322,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
@@ -367,7 +367,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
@@ -412,7 +412,7 @@
       "population_coverage_pixels": 0,
       "provenance": {
         "dem": {
-          "file": "C:\\Users\\nalad\\Desktop\\Indradhanu_Project\\data\\raw\\pune_elevation.tif",
+          "file": "data\\raw\\pune_elevation.tif",
           "sha256": "e25842b9fe6e7f561124e0e1957edd571cbef826f4002ddc39b44ab60a84df2f",
           "crs": "EPSG:4326",
           "units": "metres",
