@@ -12,7 +12,7 @@ services:
       - key: APP_ENV
         value: production
       - key: CORS_ORIGINS
-        sync: false
+        value: https://climaguard-ai.vercel.app
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_PUBLISHABLE_KEY

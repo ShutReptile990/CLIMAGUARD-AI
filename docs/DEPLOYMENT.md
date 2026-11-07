@@ -20,9 +20,9 @@ Set the Blueprint's prompted environment variables in Render, never in source:
 - `SUPABASE_SECRET_KEY`: server-side secret/service-role credential; never expose in Vercel.
 - `NUGEN_API_KEY`: deployed aligned-model API key; server-side only.
 - `NUGEN_MODEL_ID`: `model_01m66gqc3qk10zdy` for the currently verified deployment, unless the model owner has explicitly replaced it.
-- `CORS_ORIGINS`: exact HTTPS Vercel origin(s), comma-separated, with no path or trailing wildcard. Include the production domain and only the preview domains that actually need browser access. Production startup now rejects missing, wildcard, HTTP, or path-bearing values.
+- `CORS_ORIGINS=https://climaguard-ai.vercel.app`: exact HTTPS Vercel origin, with no path or trailing slash. The Blueprint now carries this public, non-secret value. Add the previous deployment origin as a comma-separated second value only if that deployment is still intentionally supported. Production startup rejects missing, wildcard, HTTP, or path-bearing values.
 
-`APP_ENV=production` is in the Blueprint. The existing Nugen endpoint defaults to `https://api.nugen.in/api/v3/inference/chat/completions`; set `NUGEN_INFERENCE_URL` only if the deployed model's verified endpoint differs. `DATABASE_URL` is not required for normal API operation because the app uses Supabase REST, but direct raster/OSM import scripts may need it. `sync: false` prompts for values at initial Blueprint creation; for an existing Render service, add or update these variables in its Environment page. [Render's secret variable guidance](https://render.com/docs/blueprint-spec#prompting-for-secret-values).
+`APP_ENV=production` and the public CORS origin are in the Blueprint. The existing Nugen endpoint defaults to `https://api.nugen.in/api/v3/inference/chat/completions`; set `NUGEN_INFERENCE_URL` only if the deployed model's verified endpoint differs. `DATABASE_URL` is not required for normal API operation because the app uses Supabase REST, but direct raster/OSM import scripts may need it. The secret variables marked `sync: false` prompt for values at initial Blueprint creation; for an existing Render service, add or update them in its Environment page. [Render's secret variable guidance](https://render.com/docs/blueprint-spec#prompting-for-secret-values).
 
 After deployment, record the actual backend URL. Verify `GET https://<backend-host>/api/health` returns HTTP 200. Check that startup logs contain no credentials and that the hosted backend can reach Supabase, Open-Meteo and Nugen.
 
@@ -32,7 +32,7 @@ Import the same repository into Vercel with **Root Directory `frontend`**. Use f
 
 Set the following Vercel build environment variables:
 
-- `VITE_API_BASE_URL=https://<actual-backend-host>` (the Render origin only; the client appends `/api/v1`). A trailing `/api` or `/api/v1` is normalized, but an unrelated path is rejected.
+- `VITE_API_BASE_URL=https://climaguard-ai-rlvb.onrender.com` (the Render origin only; the client appends `/api/v1`). A trailing `/api` or `/api/v1` is normalized, but an unrelated path is rejected.
 - `VITE_SUPABASE_URL=https://<existing-project>.supabase.co`.
 - `VITE_SUPABASE_PUBLISHABLE_KEY=<browser-safe-publishable-key>`.
 
@@ -40,7 +40,7 @@ Vite embeds `VITE_` variables in browser JavaScript. Never add `SUPABASE_SECRET_
 
 ## 4. Complete cross-origin authentication
 
-1. Add the final Vercel HTTPS origin to backend `CORS_ORIGINS` in Render, then redeploy/restart the backend.
+1. Confirm Render has `CORS_ORIGINS=https://climaguard-ai.vercel.app`, then redeploy/restart the backend. The old `https://climaguard-emiayx6p5-emailmesdn0-6446.vercel.app` origin is unnecessary unless that deployment must remain usable.
 2. In the existing Supabase Auth URL configuration, set the production site URL and allow the deployed origin plus `/reset-password` as a redirect destination. Retain localhost redirects only if local development is still needed.
 3. Test sign-in, refresh, password reset, logout, citizen ownership, and authority-only navigation using accounts you control. The backend verifies every bearer token and role; frontend navigation is only a convenience layer.
 

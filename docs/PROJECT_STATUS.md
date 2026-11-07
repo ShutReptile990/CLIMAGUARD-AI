@@ -192,7 +192,14 @@ See [method and evidence](../ml/README.md), [data sources](DATA_SOURCES.md), and
 - The production failure mode was a missing `VITE_API_BASE_URL`: the shared client reduced it to an empty base and requested Vercel's own `/api/v1/*` paths, while the SPA rewrite returned `index.html`. The browser therefore never reached Render.
 - API origin parsing is now shared by the Vite build and runtime client. Production requires an explicit HTTPS Render origin, normalizes trailing `/api` or `/api/v1`, and rejects ambiguous paths; development may continue to use the local Vite proxy.
 - Backend CORS accepts only configured, exact HTTP(S) origins, rejects wildcard origins, and requires HTTPS origins in production. Bearer-token `Authorization` and JSON preflights remain supported without exposing server credentials.
-- Render continues to bind `app.main:app` to `0.0.0.0:$PORT`, with `/api/health` as its non-sensitive health check. Hosted acceptance remains pending because the actual Render and Vercel URLs are not present in repository configuration.
+- Render continues to bind `app.main:app` to `0.0.0.0:$PORT`, with `/api/health` as its non-sensitive health check. The concrete hosted diagnosis and remaining dashboard action are recorded below.
+
+### Live production diagnosis (2026-11-07)
+
+- `https://climaguard-ai-rlvb.onrender.com/api/health` returned HTTP 200 with `database_configured=true`, and `https://climaguard-ai.vercel.app/citizen` returned HTTP 200.
+- The deployed Vercel bundle contains `https://climaguard-ai-rlvb.onrender.com` as the shared API base, so URL resolution and `/api/v1` construction are correct in the deployed frontend.
+- An actual `OPTIONS /api/v1/incidents` from origin `https://climaguard-ai.vercel.app` returned HTTP 400 with no allow-origin header, while the former `climaguard-emiayx6p5-emailmesdn0-6446.vercel.app` origin returned HTTP 200. The live failure is therefore the Render service's stale `CORS_ORIGINS` after the Vercel domain change.
+- `render.yaml` now declares the current exact Vercel origin. The Render environment must be synchronized/redeployed before the live preflight can pass. Frontend network errors now distinguish offline/unreachable, browser CORS blocking, status-specific authorization/service failures, missing routes, and malformed API responses.
 
 ## Extreme rainfall demo screening (2026-11-06)
 

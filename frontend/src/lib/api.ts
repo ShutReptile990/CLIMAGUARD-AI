@@ -4,19 +4,45 @@ import { supabase } from './supabase'
 import { buildApiUrl, normalizeApiBase } from './apiConfig'
 const BASE = normalizeApiBase(import.meta.env.VITE_API_BASE_URL, import.meta.env.PROD)
 const apiUrl = (path: string) => buildApiUrl(BASE, path)
-export class ApiError extends Error { constructor(message: string, public status?: number) { super(message) } }
+type ApiErrorKind = 'network' | 'cors' | 'authentication' | 'authorization' | 'not_found' | 'server' | 'service' | 'invalid_response'
+export class ApiError extends Error {
+  constructor(message: string, public status?: number, public kind?: ApiErrorKind) { super(message) }
+}
+
+async function connectionFailure(url: string): Promise<ApiError> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return new ApiError('You appear to be offline. Reconnect and try again.', undefined, 'network')
+  }
+  if (BASE) {
+    try {
+      // An opaque response proves the host is reachable without reading or exposing its data.
+      await fetch(`${BASE}/api/health`, { mode: 'no-cors', cache: 'no-store' })
+      return new ApiError(`The API is reachable, but the browser blocked access. Verify that Render CORS_ORIGINS includes ${window.location.origin}.`, undefined, 'cors')
+    } catch { /* The host, TLS connection, or network is unavailable. */ }
+  }
+  return new ApiError(`Could not reach the climate service at ${new URL(url, window.location.origin).origin}. Check your connection and try again.`, undefined, 'network')
+}
+
+function httpFailure(status: number, detail: string | null): ApiError {
+  if (status === 401) return new ApiError('Your session is missing or expired. Sign in and try again.', status, 'authentication')
+  if (status === 403) return new ApiError('You do not have permission to perform this action.', status, 'authorization')
+  if (status === 404) return new ApiError('The requested service route was not found. Check the deployed API version.', status, 'not_found')
+  if (status === 502 || status === 503) return new ApiError(detail ?? 'A required upstream service is temporarily unavailable. Try again shortly.', status, 'service')
+  if (status >= 500) return new ApiError('The climate service encountered an internal error. Try again shortly.', status, 'server')
+  return new ApiError(detail ?? `The request failed with HTTP ${status}.`, status)
+}
 async function request<T>(path: string, options?: RequestInit, retried = false): Promise<T> {
   let response: Response
   const url = apiUrl(path)
   // A failed Auth session lookup must not prevent public weather and AQI requests.
   const session = supabase ? await supabase.auth.getSession().then(({ data }) => data.session).catch(() => null) : null
   try { response = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}), ...options?.headers } }) }
-  catch { throw new ApiError(`Could not reach FastAPI at ${BASE || 'the current origin'}. Check the backend address, Vite proxy, and CORS setting.`) }
+  catch { throw await connectionFailure(url) }
   const contentType = response.headers.get('content-type') ?? ''
   if (!contentType.includes('application/json')) {
-    throw new ApiError(`API request ${url} returned HTTP ${response.status} without JSON. Check the backend URL and API route prefix.`, response.status)
+    throw new ApiError(`The API returned HTTP ${response.status} in an unexpected format. Check the backend URL and route prefix.`, response.status, 'invalid_response')
   }
-  const body: unknown = await response.json().catch(() => { throw new ApiError(`API request ${url} returned invalid JSON.`, response.status) })
+  const body: unknown = await response.json().catch(() => { throw new ApiError('The API returned invalid JSON.', response.status, 'invalid_response') })
   if (response.status === 401 && session && supabase && !retried) {
     const refreshed = await supabase.auth.refreshSession().catch(() => null)
     if (refreshed?.data.session) return request<T>(path, options, true)
@@ -24,7 +50,7 @@ async function request<T>(path: string, options?: RequestInit, retried = false):
   }
   if (!response.ok) {
     const detail = typeof body === 'object' && body !== null && 'detail' in body && typeof body.detail === 'string' ? body.detail : null
-    throw new ApiError(detail ? `${detail} (HTTP ${response.status}, ${url})` : `API request ${url} failed with HTTP ${response.status}.`, response.status)
+    throw httpFailure(response.status, detail)
   }
   return body as T
 }
